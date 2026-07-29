@@ -1,13 +1,16 @@
 import streamlit as st
 
+from data.schemas.toters import TOTERS_REQUIRED_COLUMNS
 from data.schemas.uber_eats import UBER_EATS_REQUIRED_COLUMNS
 from utils.analyser import analyse_delivery_platform
 from utils.loader import load_file
 from utils.mapper import map_uber_eats
+from utils.toters_mapper import map_toters
 from utils.validation import (
     validate_required_columns,
     validate_restaurant_name,
 )
+
 
 st.set_page_config(
     page_title="KitchenIQ",
@@ -15,25 +18,31 @@ st.set_page_config(
     layout="wide",
 )
 
+
 st.title("🍽️ KitchenIQ")
 st.subheader("AI Operational Intelligence for Restaurants")
 st.divider()
 
+
 restaurant_name = st.text_input("Restaurant Name")
+
 
 platform = st.selectbox(
     "Delivery Platform",
     [
         "Uber Eats",
+        "Toters",
         "Deliveroo",
         "Just Eat",
     ],
 )
 
+
 uploaded_file = st.file_uploader(
     "Upload Restaurant Report",
     type=["csv", "xlsx"],
 )
+
 
 if st.button("Analyse Restaurant"):
     valid, message = validate_restaurant_name(restaurant_name)
@@ -45,23 +54,36 @@ if st.button("Analyse Restaurant"):
         st.error("Please upload a restaurant report.")
 
     else:
-        data = load_file(uploaded_file)
+        try:
+            data = load_file(uploaded_file)
+
+        except Exception as error:
+            st.error(f"KitchenIQ could not read this file: {error}")
+            st.stop()
 
         if data is None:
             st.error("KitchenIQ could not read this file.")
+            st.stop()
 
-        else:
-            if platform == "Uber Eats":
+        # ---------------------------------------------------------
+        # UBER EATS
+        # ---------------------------------------------------------
+        if platform == "Uber Eats":
+            try:
                 data = map_uber_eats(data)
 
-                valid_columns, column_message = validate_required_columns(
-                    data,
-                    UBER_EATS_REQUIRED_COLUMNS,
-                )
+            except Exception as error:
+                st.error(f"KitchenIQ could not map this Uber Eats report: {error}")
+                st.stop()
 
-                if not valid_columns:
-                    st.error(column_message)
-                    st.stop()
+            valid_columns, column_message = validate_required_columns(
+                data,
+                UBER_EATS_REQUIRED_COLUMNS,
+            )
+
+            if not valid_columns:
+                st.error(column_message)
+                st.stop()
 
             analysis = analyse_delivery_platform(data)
 
@@ -71,7 +93,7 @@ if st.button("Analyse Restaurant"):
 
             st.success(
                 f"Welcome {restaurant_name}! "
-                "KitchenIQ has analysed your restaurant report."
+                "KitchenIQ has analysed your Uber Eats report."
             )
 
             st.caption(
@@ -153,25 +175,27 @@ if st.button("Analyse Restaurant"):
                 for problem in problems:
                     severity = problem.get("severity", "medium").lower()
                     title = problem.get("title", "Detected problem")
-                    message = problem.get("message", "")
+                    problem_message = problem.get("message", "")
                     evidence = problem.get("evidence", {})
 
                     if severity == "high":
                         st.error(f"High Priority — {title}")
+
                     elif severity == "medium":
                         st.warning(f"Medium Priority — {title}")
+
                     else:
                         st.info(f"Low Priority — {title}")
 
-                    st.write(message)
+                    st.write(problem_message)
 
                     with st.expander("View supporting evidence"):
                         for key, value in evidence.items():
                             label = key.replace("_", " ").title()
 
-                            if "rate" in key and isinstance(
-                                value,
-                                (int, float),
+                            if (
+                                "rate" in key
+                                and isinstance(value, (int, float))
                             ):
                                 st.write(f"**{label}:** {value:.1%}")
 
@@ -192,17 +216,24 @@ if st.button("Analyse Restaurant"):
             else:
                 for recommendation in recommendations:
                     st.markdown(
-                        f"### {recommendation.get('title', 'Recommendation')}"
+                        f"### "
+                        f"{recommendation.get('title', 'Recommendation')}"
                     )
 
                     st.write(
                         "**Priority:** "
-                        f"{recommendation.get('priority', 'Not specified').title()}"
+                        f"{recommendation.get(
+                            'priority',
+                            'Not specified',
+                        ).title()}"
                     )
 
                     st.write(
                         "**Expected impact:** "
-                        f"{recommendation.get('expected_impact', 'Not specified')}"
+                        f"{recommendation.get(
+                            'expected_impact',
+                            'Not specified',
+                        )}"
                     )
 
                     actions = recommendation.get("actions", [])
@@ -231,5 +262,112 @@ if st.button("Analyse Restaurant"):
             with st.expander("View normalised report data"):
                 st.dataframe(
                     data,
-                    use_container_width=True,
+                    width="stretch",
                 )
+
+        # ---------------------------------------------------------
+        # TOTERS
+        # ---------------------------------------------------------
+        elif platform == "Toters":
+            try:
+                data = map_toters(data)
+
+            except ValueError as error:
+                st.error(str(error))
+                st.stop()
+
+            except Exception as error:
+                st.error(f"KitchenIQ could not map this Toters report: {error}")
+                st.stop()
+
+            valid_columns, column_message = validate_required_columns(
+                data,
+                TOTERS_REQUIRED_COLUMNS,
+            )
+
+            if not valid_columns:
+                st.error(column_message)
+                st.stop()
+
+            st.success(
+                f"Welcome {restaurant_name}! "
+                "KitchenIQ successfully recognised your Toters invoice report."
+            )
+
+            st.caption(
+                f"{platform} report · "
+                f"{data.shape[0]} transaction rows · "
+                f"{data.shape[1]} columns"
+            )
+
+            st.subheader("Toters Connector Status")
+
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "Transaction Rows",
+                f"{data.shape[0]:,}",
+            )
+
+            unique_orders = 0
+
+            if "Order code" in data.columns:
+                unique_orders = data["Order code"].dropna().nunique()
+
+            col2.metric(
+                "Unique Order Codes",
+                f"{unique_orders:,}",
+            )
+
+            categories = 0
+
+            if "Category" in data.columns:
+                categories = data["Category"].dropna().nunique()
+
+            col3.metric(
+                "Financial Categories",
+                f"{categories:,}",
+            )
+
+            st.info(
+                "The Toters file has passed schema validation. "
+                "The next development step is to group its financial "
+                "transaction rows into one consolidated row per order "
+                "before calculating KPIs and recommendations."
+            )
+
+            if "Category" in data.columns:
+                st.subheader("Detected Toters Categories")
+
+                category_counts = (
+                    data["Category"]
+                    .fillna("Uncategorised")
+                    .value_counts()
+                    .rename_axis("Category")
+                    .reset_index(name="Rows")
+                )
+
+                st.dataframe(
+                    category_counts,
+                    width="stretch",
+                    hide_index=True,
+                )
+
+            with st.expander("View Toters report data"):
+                st.dataframe(
+                    data,
+                    width="stretch",
+                )
+
+        # ---------------------------------------------------------
+        # NOT YET SUPPORTED
+        # ---------------------------------------------------------
+        else:
+            st.warning(
+                f"{platform} is listed in KitchenIQ, "
+                "but its connector has not been built yet."
+            )
+
+            st.info(
+                "Please select Uber Eats or Toters for the current version."
+            )
