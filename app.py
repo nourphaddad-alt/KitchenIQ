@@ -8,6 +8,9 @@ from utils.mapper import map_uber_eats
 from utils.toters_kpis import calculate_toters_kpis
 from utils.toters_mapper import map_toters
 from utils.toters_problems import detect_toters_problems
+from utils.toters_recommendations import (
+    generate_toters_recommendations,
+)
 from utils.validation import (
     validate_required_columns,
     validate_restaurant_name,
@@ -49,25 +52,34 @@ def format_rate(value) -> str:
     return f"{value:.1%}"
 
 
-def format_evidence_value(key: str, value) -> str:
+def format_evidence_value(
+    key: str,
+    value,
+) -> str:
     """
     Format diagnostic evidence according to its metric type.
     """
     if value is None:
         return "Unavailable"
 
-    if "rate" in key and isinstance(value, (int, float)):
+    if "rate" in key and isinstance(
+        value,
+        (int, float),
+    ):
         return f"{value:.1%}"
 
+    money_keys = {
+        "gross_revenue",
+        "net_order_revenue",
+        "total_platform_cost",
+        "total_marketing_cost",
+        "total_listing_fee",
+        "average_order_value",
+        "average_net_order_value",
+    }
+
     if (
-        key
-        in {
-            "gross_revenue",
-            "net_order_revenue",
-            "total_platform_cost",
-            "total_marketing_cost",
-            "total_listing_fee",
-        }
+        key in money_keys
         and isinstance(value, (int, float))
     ):
         return format_lbp(value)
@@ -81,7 +93,9 @@ def format_evidence_value(key: str, value) -> str:
     return str(value)
 
 
-def display_problem_section(problems: list) -> None:
+def display_problem_section(
+    problems: list,
+) -> None:
     """
     Display structured diagnostic problems.
     """
@@ -89,7 +103,8 @@ def display_problem_section(problems: list) -> None:
 
     if not problems:
         st.success(
-            "No problems were detected using the current diagnostic rules."
+            "No problems were detected using the current "
+            "diagnostic rules."
         )
         return
 
@@ -142,7 +157,9 @@ def display_problem_section(problems: list) -> None:
             ).title()
         )
 
-        st.write(problem_message)
+        st.write(
+            problem_message
+        )
 
         with st.expander(
             "View supporting evidence"
@@ -174,18 +191,21 @@ def display_recommendation_section(
     recommendations: list,
 ) -> None:
     """
-    Display structured recommendations.
+    Display structured operational recommendations.
     """
     st.subheader("Recommended Actions")
 
     if not recommendations:
         st.info(
-            "No recommendations were generated because no current "
-            "diagnostic rule was triggered."
+            "No recommendations were generated because "
+            "no current diagnostic rule was triggered."
         )
         return
 
-    for recommendation in recommendations:
+    for index, recommendation in enumerate(
+        recommendations,
+        start=1,
+    ):
         title = recommendation.get(
             "title",
             "Recommendation",
@@ -202,11 +222,24 @@ def display_recommendation_section(
         )
 
         st.markdown(
-            f"### {title}"
+            f"### {index}. {title}"
         )
 
-        st.write(
+        col1, col2 = st.columns(2)
+
+        col1.write(
             f"**Priority:** {priority.title()}"
+        )
+
+        col2.write(
+            "**Metric to monitor:** "
+            + recommendation.get(
+                "metric_to_monitor",
+                "Not specified",
+            ).replace(
+                "_",
+                " ",
+            ).title()
         )
 
         st.write(
@@ -219,30 +252,14 @@ def display_recommendation_section(
         )
 
         if actions:
-            st.write("**Actions:**")
+            st.write(
+                "**Recommended actions:**"
+            )
 
             for action in actions:
                 st.markdown(
                     f"- {action}"
                 )
-
-        metric_to_monitor = (
-            recommendation.get(
-                "metric_to_monitor"
-            )
-        )
-
-        if metric_to_monitor:
-            metric_label = (
-                metric_to_monitor.replace(
-                    "_",
-                    " ",
-                ).title()
-            )
-
-            st.caption(
-                f"Metric to monitor: {metric_label}"
-            )
 
         st.divider()
 
@@ -270,7 +287,9 @@ def display_uber_analysis(
         f"{data.shape[1]} columns"
     )
 
-    st.subheader("Performance Overview")
+    st.subheader(
+        "Performance Overview"
+    )
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -359,7 +378,7 @@ def display_toters_results(
     data,
 ) -> None:
     """
-    Display Toters KPIs and diagnostic findings.
+    Display Toters KPIs, diagnostic findings and recommendations.
     """
     kpis = calculate_toters_kpis(
         data
@@ -369,10 +388,16 @@ def display_toters_results(
         kpis
     )
 
+    recommendations = (
+        generate_toters_recommendations(
+            problems
+        )
+    )
+
     st.success(
         f"Welcome {restaurant}! "
-        "KitchenIQ has consolidated and analysed your Toters "
-        "invoice report."
+        "KitchenIQ has consolidated and analysed your "
+        "Toters invoice report."
     )
 
     st.caption(
@@ -536,22 +561,20 @@ def display_toters_results(
 
     st.success(
         "The Toters invoice ledger has been validated, "
-        "consolidated and analysed successfully."
+        "consolidated, analysed and diagnosed successfully."
     )
 
     display_problem_section(
         problems
     )
 
-    st.info(
-        "Toters diagnostic rules are active. The next development "
-        "step is to connect each detected problem to structured "
-        "recommendations."
+    display_recommendation_section(
+        recommendations
     )
 
     with st.expander(
         "View consolidated Toters orders",
-        expanded=True,
+        expanded=False,
     ):
         st.dataframe(
             data,
@@ -560,10 +583,14 @@ def display_toters_results(
         )
 
 
-st.title("🍽️ KitchenIQ")
+st.title(
+    "🍽️ KitchenIQ"
+)
+
 st.subheader(
     "AI Operational Intelligence for Restaurants"
 )
+
 st.divider()
 
 
@@ -603,7 +630,9 @@ if st.button(
     )
 
     if not valid:
-        st.error(message)
+        st.error(
+            message
+        )
         st.stop()
 
     if uploaded_file is None:
@@ -726,8 +755,9 @@ if st.button(
 
         except Exception as error:
             st.error(
-                "KitchenIQ could not calculate or diagnose "
-                f"the Toters report: {error}"
+                "KitchenIQ could not calculate, diagnose "
+                "or recommend actions for the Toters report: "
+                f"{error}"
             )
             st.stop()
 
