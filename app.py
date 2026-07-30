@@ -1,16 +1,14 @@
+import pandas as pd
 import streamlit as st
 
+from application.dto.analysis_result import AnalysisResult
+from application.services.health_score_service import HealthScoreService
+from application.services.import_service import ImportService
 from data.schemas.toters import TOTERS_REQUIRED_COLUMNS
 from data.schemas.uber_eats import UBER_EATS_REQUIRED_COLUMNS
 from utils.analyser import analyse_delivery_platform
 from utils.loader import load_file
 from utils.mapper import map_uber_eats
-from utils.toters_kpis import calculate_toters_kpis
-from utils.toters_mapper import map_toters
-from utils.toters_problems import detect_toters_problems
-from utils.toters_recommendations import (
-    generate_toters_recommendations,
-)
 from utils.validation import (
     validate_required_columns,
     validate_restaurant_name,
@@ -373,26 +371,68 @@ def display_uber_analysis(
         )
 
 
+def build_executive_summary(
+    restaurant: str,
+    analysis_result: AnalysisResult,
+) -> str:
+    """
+    Create a deterministic executive summary from the current Toters metrics.
+    """
+    metrics = analysis_result.metrics
+
+    gross_revenue = format_lbp(
+        metrics.get("gross_revenue", 0.0)
+    )
+    total_orders = f"{metrics.get('total_orders', 0):,}"
+    retained_rate = format_rate(
+        metrics.get("retained_revenue_rate")
+    )
+
+    diagnostics = analysis_result.diagnostics or []
+    issue_titles = [
+        problem.get("title", "an identified issue")
+        for problem in diagnostics[:2]
+        if problem.get("title")
+    ]
+
+    if len(issue_titles) >= 2:
+        issue_text = f"{issue_titles[0]} and {issue_titles[1]}"
+        return (
+            f"{restaurant} generated {gross_revenue} from "
+            f"{total_orders} Toters orders during the analysed period. "
+            f"The restaurant retained {retained_rate} of gross revenue "
+            f"after recorded platform deductions. The main areas requiring "
+            f"attention are {issue_text}."
+        )
+
+    if len(issue_titles) == 1:
+        return (
+            f"{restaurant} generated {gross_revenue} from "
+            f"{total_orders} Toters orders during the analysed period. "
+            f"The restaurant retained {retained_rate} of gross revenue "
+            f"after recorded platform deductions. The main area requiring "
+            f"attention is {issue_titles[0]}."
+        )
+
+    return (
+        f"{restaurant} generated {gross_revenue} from "
+        f"{total_orders} Toters orders during the analysed period. "
+        f"The restaurant retained {retained_rate} of gross revenue "
+        f"after recorded platform deductions."
+    )
+
+
 def display_toters_results(
     restaurant: str,
-    data,
+    analysis_result: AnalysisResult,
 ) -> None:
     """
     Display Toters KPIs, diagnostic findings and recommendations.
     """
-    kpis = calculate_toters_kpis(
-        data
-    )
-
-    problems = detect_toters_problems(
-        kpis
-    )
-
-    recommendations = (
-        generate_toters_recommendations(
-            problems
-        )
-    )
+    metrics = analysis_result.metrics
+    problems = analysis_result.diagnostics
+    recommendations = analysis_result.recommendations
+    health_score = HealthScoreService().calculate(analysis_result)
 
     st.success(
         f"Welcome {restaurant}! "
@@ -402,9 +442,36 @@ def display_toters_results(
 
     st.caption(
         f"Toters report · "
-        f"{kpis['total_orders']:,} consolidated orders · "
-        f"{data.shape[1]} analytical columns"
+        f"{metrics.get('total_orders', 0):,} consolidated orders · "
+        f"{len(analysis_result.records)} imported records"
     )
+
+    st.subheader("Executive Summary")
+    st.write(build_executive_summary(restaurant, analysis_result))
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric("Health Score", f"{health_score.score}/100")
+    col2.metric("Health Label", health_score.label)
+    col3.metric("Interpretation", health_score.interpretation)
+
+    st.subheader("Top Three Priorities")
+
+    for index, problem in enumerate(problems[:3], start=1):
+        severity = problem.get("severity", "medium").title()
+        title = problem.get("title", "Priority")
+        business_area = (
+            problem.get("business_area", "general")
+            .replace("_", " ")
+            .title()
+        )
+        description = problem.get("message", "")
+
+        st.markdown(f"### {index}. {title}")
+        st.write(f"**Severity:** {severity}")
+        st.write(f"**Business area:** {business_area}")
+        st.write(description)
+        st.divider()
 
     st.subheader(
         "Toters Performance Overview"
@@ -414,27 +481,27 @@ def display_toters_results(
 
     col1.metric(
         "Total Orders",
-        f"{kpis['total_orders']:,}",
+        f"{metrics.get('total_orders', 0):,}",
     )
 
     col2.metric(
         "Gross Revenue",
         format_lbp(
-            kpis["gross_revenue"]
+            metrics.get("gross_revenue", 0.0)
         ),
     )
 
     col3.metric(
         "Net Order Revenue",
         format_lbp(
-            kpis["net_order_revenue"]
+            metrics.get("net_order_revenue", 0.0)
         ),
     )
 
     col4.metric(
         "Total Platform Cost",
         format_lbp(
-            kpis["total_platform_cost"]
+            metrics.get("total_platform_cost", 0.0)
         ),
     )
 
@@ -443,28 +510,28 @@ def display_toters_results(
     col5.metric(
         "Average Order Value",
         format_lbp(
-            kpis["average_order_value"]
+            metrics.get("average_order_value", 0.0)
         ),
     )
 
     col6.metric(
         "Platform Cost Rate",
         format_rate(
-            kpis["platform_cost_rate"]
+            metrics.get("platform_cost_rate")
         ),
     )
 
     col7.metric(
         "Marketing Cost",
         format_lbp(
-            kpis["total_marketing_cost"]
+            metrics.get("total_marketing_cost", 0.0)
         ),
     )
 
     col8.metric(
         "Marketing Cost Rate",
         format_rate(
-            kpis["marketing_cost_rate"]
+            metrics.get("marketing_cost_rate")
         ),
     )
 
@@ -473,26 +540,26 @@ def display_toters_results(
     col9.metric(
         "Listing Fee Rate",
         format_rate(
-            kpis["listing_fee_rate"]
+            metrics.get("listing_fee_rate")
         ),
     )
 
     col10.metric(
         "Retained Revenue Rate",
         format_rate(
-            kpis["retained_revenue_rate"]
+            metrics.get("retained_revenue_rate")
         ),
     )
 
     col11.metric(
         "Orders With Marketing",
-        f"{kpis['orders_with_marketing']:,}",
+        f"{metrics.get('orders_with_marketing', 0):,}",
     )
 
     col12.metric(
         "Marketing Order Share",
         format_rate(
-            kpis["marketing_order_share"]
+            metrics.get("marketing_order_share")
         ),
     )
 
@@ -505,28 +572,28 @@ def display_toters_results(
     col13.metric(
         "Average Net Order Value",
         format_lbp(
-            kpis["average_net_order_value"]
+            metrics.get("average_net_order_value", 0.0)
         ),
     )
 
     col14.metric(
         "Median Order Value",
         format_lbp(
-            kpis["median_order_value"]
+            metrics.get("median_order_value", 0.0)
         ),
     )
 
     col15.metric(
         "Listing Fees Paid",
         format_lbp(
-            kpis["total_listing_fee"]
+            metrics.get("total_listing_fee", 0.0)
         ),
     )
 
     col16.metric(
         "VAT Paid",
         format_lbp(
-            kpis["total_vat"]
+            metrics.get("total_vat", 0.0)
         ),
     )
 
@@ -535,22 +602,22 @@ def display_toters_results(
     col17.metric(
         "Minimum Order Value",
         format_lbp(
-            kpis["minimum_order_value"]
+            metrics.get("minimum_order_value", 0.0)
         ),
     )
 
     col18.metric(
         "Maximum Order Value",
         format_lbp(
-            kpis["maximum_order_value"]
+            metrics.get("maximum_order_value", 0.0)
         ),
     )
 
     col19.metric(
         "Analysis Period",
         (
-            f"{kpis['period_days']} days"
-            if kpis["period_days"] is not None
+            f"{metrics.get('period_days')} days"
+            if metrics.get("period_days") is not None
             else "Unavailable"
         ),
     )
@@ -576,8 +643,25 @@ def display_toters_results(
         "View consolidated Toters orders",
         expanded=False,
     ):
+        if analysis_result.records:
+            display_data = pd.DataFrame(
+                [
+                    {
+                        "source_row_number": record.source_row_number,
+                        "occurred_at": record.occurred_at,
+                        "source_category": record.source_category,
+                        "event_type": record.event_type,
+                        "signed_amount": str(record.signed_amount),
+                        "currency": record.currency,
+                    }
+                    for record in analysis_result.records
+                ]
+            )
+        else:
+            display_data = pd.DataFrame()
+
         st.dataframe(
-            data,
+            display_data,
             width="stretch",
             hide_index=True,
         )
@@ -724,8 +808,11 @@ if st.button(
             st.stop()
 
         try:
-            data = map_toters(
-                raw_data
+            import_service = ImportService()
+            analysis_result = import_service.run_toters_import(
+                dataframe=raw_data,
+                restaurant_name=restaurant_name,
+                platform=platform,
             )
 
         except ValueError as error:
@@ -736,7 +823,7 @@ if st.button(
 
         except Exception as error:
             st.error(
-                "KitchenIQ could not map this Toters "
+                "KitchenIQ could not process this Toters "
                 f"report: {error}"
             )
             st.stop()
@@ -744,7 +831,7 @@ if st.button(
         try:
             display_toters_results(
                 restaurant=restaurant_name,
-                data=data,
+                analysis_result=analysis_result,
             )
 
         except ValueError as error:
