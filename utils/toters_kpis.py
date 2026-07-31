@@ -85,7 +85,13 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         errors="coerce",
     )
 
+    # Every unique order ID remains part of the total order count.
     total_orders = working["order_id"].nunique()
+
+    # Revenue-based order statistics exclude records with no gross revenue.
+    revenue_orders = working.loc[
+        working["gross_revenue"] > 0
+    ].copy()
 
     gross_revenue = working["gross_revenue"].sum()
     net_order_revenue = working["net_order_revenue"].sum()
@@ -137,7 +143,10 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
     )
 
     orders_with_marketing = int(
-        (working["total_marketing_cost"] > 0).sum()
+        working.loc[
+            working["total_marketing_cost"] > 0,
+            "order_id",
+        ].nunique()
     )
 
     marketing_order_share = (
@@ -146,15 +155,21 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         else None
     )
 
-    median_order_value = working["gross_revenue"].median()
-    minimum_order_value = working["gross_revenue"].min()
-    maximum_order_value = working["gross_revenue"].max()
+    if revenue_orders.empty:
+        median_order_value = 0.0
+        minimum_order_value = 0.0
+        maximum_order_value = 0.0
+    else:
+        gross_order_values = revenue_orders["gross_revenue"]
+
+        median_order_value = gross_order_values.median()
+        minimum_order_value = gross_order_values.min()
+        maximum_order_value = gross_order_values.max()
 
     valid_dates = working["order_date"].dropna()
 
     if valid_dates.empty:
         period_days = None
-
     else:
         period_days = (
             valid_dates.max().normalize()
