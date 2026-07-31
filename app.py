@@ -503,115 +503,163 @@ def display_toters_results(
         st.write(description)
         st.divider()
 
-    st.subheader("Toters Performance Overview")
+    period_days = metrics.get("period_days")
+    period_display = (
+        f"{period_days} days"
+        if period_days is not None
+        else "Unavailable"
+    )
 
-    col1, col2, col3, col4 = st.columns(4)
+    # -------------------------------------------------------------
+    # OVERVIEW
+    # -------------------------------------------------------------
+    st.subheader("📊 Overview")
 
-    col1.metric(
+    overview_col1, overview_col2, overview_col3, overview_col4 = (
+        st.columns(4)
+    )
+
+    overview_col1.metric(
         "Total Orders",
         f"{metrics.get('total_orders', 0):,}",
     )
 
-    col2.metric(
+    overview_col2.metric(
         "Gross Revenue",
         format_lbp(metrics.get("gross_revenue", 0.0)),
     )
 
-    col3.metric(
-        "Net Order Revenue",
+    overview_col3.metric(
+        "Net Revenue",
         format_lbp(metrics.get("net_order_revenue", 0.0)),
     )
 
-    col4.metric(
+    overview_col4.metric(
+        "Revenue Kept",
+        format_rate(metrics.get("retained_revenue_rate")),
+    )
+
+    overview_col5, overview_col6, overview_col7 = st.columns(3)
+
+    overview_col5.metric(
         "Total Platform Cost",
         format_lbp(metrics.get("total_platform_cost", 0.0)),
     )
 
-    col5, col6, col7, col8 = st.columns(4)
-
-    col5.metric(
+    overview_col6.metric(
         "Average Order Value",
         format_lbp(metrics.get("average_order_value", 0.0)),
     )
 
-    col6.metric(
+    overview_col7.metric(
+        "Analysis Period",
+        period_display,
+    )
+
+    # -------------------------------------------------------------
+    # FINANCIAL PERFORMANCE
+    # -------------------------------------------------------------
+    st.subheader("💰 Financial Performance")
+
+    financial_col1, financial_col2, financial_col3, financial_col4 = (
+        st.columns(4)
+    )
+
+    financial_col1.metric(
+        "Gross Revenue",
+        format_lbp(metrics.get("gross_revenue", 0.0)),
+    )
+
+    financial_col2.metric(
+        "Net Revenue",
+        format_lbp(metrics.get("net_order_revenue", 0.0)),
+    )
+
+    financial_col3.metric(
+        "Revenue Kept",
+        format_rate(metrics.get("retained_revenue_rate")),
+    )
+
+    financial_col4.metric(
+        "Total Platform Cost",
+        format_lbp(metrics.get("total_platform_cost", 0.0)),
+    )
+
+    financial_col5, financial_col6, financial_col7, financial_col8 = (
+        st.columns(4)
+    )
+
+    financial_col5.metric(
         "Platform Cost Rate",
         format_rate(metrics.get("platform_cost_rate")),
     )
 
-    col7.metric(
-        "Marketing Cost",
-        format_lbp(metrics.get("total_marketing_cost", 0.0)),
-    )
-
-    col8.metric(
-        "Marketing Cost Rate",
-        format_rate(metrics.get("marketing_cost_rate")),
-    )
-
-    col9, col10, col11, col12 = st.columns(4)
-
-    col9.metric(
-        "Listing Fee Rate",
-        format_rate(metrics.get("listing_fee_rate")),
-    )
-
-    col10.metric(
-        "Retained Revenue Rate",
-        format_rate(metrics.get("retained_revenue_rate")),
-    )
-
-    col11.metric(
-        "Orders With Marketing",
-        f"{metrics.get('orders_with_marketing', 0):,}",
-    )
-
-    col12.metric(
-        "Marketing Order Share",
-        format_rate(metrics.get("marketing_order_share")),
-    )
-
-    st.subheader("Additional Toters Insights")
-
-    col13, col14, col15, col16 = st.columns(4)
-
-    col13.metric(
-        "Average Net Order Value",
-        format_lbp(metrics.get("average_net_order_value", 0.0)),
-    )
-
-    col14.metric(
-        "Median Order Value",
-        format_lbp(metrics.get("median_order_value", 0.0)),
-    )
-
-    col15.metric(
+    financial_col6.metric(
         "Listing Fees Paid",
         format_lbp(metrics.get("total_listing_fee", 0.0)),
     )
 
-    col16.metric(
+    financial_col7.metric(
+        "Effective Commission Rate",
+        format_rate(metrics.get("listing_fee_rate")),
+    )
+
+    financial_col8.metric(
         "VAT Paid",
         format_lbp(metrics.get("total_vat", 0.0)),
     )
 
-    col17, col18, col19 = st.columns(3)
+    financial_col9, financial_col10, financial_col11 = st.columns(3)
 
-    col17.metric(
+    financial_col9.metric(
+        "Average Net Order Value",
+        format_lbp(metrics.get("average_net_order_value", 0.0)),
+    )
+
+    financial_col10.metric(
+        "Median Order Value",
+        format_lbp(metrics.get("median_order_value", 0.0)),
+    )
+
+    financial_col11.metric(
         "Minimum Order Value",
         format_lbp(metrics.get("minimum_order_value", 0.0)),
     )
 
-    col18.metric(
+    financial_col12 = st.columns(1)[0]
+
+    financial_col12.metric(
         "Maximum Order Value",
         format_lbp(metrics.get("maximum_order_value", 0.0)),
     )
 
-    period_days = metrics.get("period_days")
+    # -------------------------------------------------------------
+    # MARKETING PERFORMANCE
+    # -------------------------------------------------------------
+    st.subheader("📣 Marketing Performance")
 
-    col19.metric(
-        "Analysis Period",
-        f"{period_days} days" if period_days is not None else "Unavailable",
+    marketing_col1, marketing_col2, marketing_col3, marketing_col4 = (
+        st.columns(4)
+    )
+
+    marketing_col1.metric(
+        "Marketing Cost",
+        format_lbp(metrics.get("total_marketing_cost", 0.0)),
+    )
+
+    marketing_col2.metric(
+        "Marketing Cost Rate",
+        format_rate(metrics.get("marketing_cost_rate")),
+    )
+
+    marketing_col3.metric(
+        "Orders With Marketing",
+        f"{metrics.get('orders_with_marketing', 0):,}",
+    )
+
+    marketing_col4.metric(
+        "Marketing Order Share",
+        format_rate(metrics.get("marketing_order_share")),
     )
 
     st.subheader("Toters Processing Status")
