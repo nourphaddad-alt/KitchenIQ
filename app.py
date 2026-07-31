@@ -48,6 +48,26 @@ def format_rate(value) -> str:
     return f"{value:.1%}"
 
 
+def render_kpi(
+    container,
+    label: str,
+    value: str,
+    formula: str,
+    definition: str,
+) -> None:
+    """
+    Render one KPI metric with concise formula and definition help.
+    """
+    container.metric(
+        label,
+        value,
+        help=(
+            f"Formula: {formula}\n\n"
+            f"Definition: {definition}"
+        ),
+    )
+
+
 def format_evidence_value(
     key: str,
     value,
@@ -519,41 +539,62 @@ def display_toters_results(
         st.columns(4)
     )
 
-    overview_col1.metric(
+    render_kpi(
+        overview_col1,
         "Total Orders",
         f"{metrics.get('total_orders', 0):,}",
+        "Count of unique consolidated order IDs",
+        "Number of customer orders identified in the Toters report.",
     )
 
-    overview_col2.metric(
+    render_kpi(
+        overview_col2,
         "Gross Revenue",
         format_lbp(metrics.get("gross_revenue", 0.0)),
+        "Σ Gross Revenue",
+        "Total customer spending before Toters deductions.",
     )
 
-    overview_col3.metric(
+    render_kpi(
+        overview_col3,
         "Net Revenue",
         format_lbp(metrics.get("net_order_revenue", 0.0)),
+        "Gross Revenue − Total Platform Cost",
+        "Revenue remaining after recorded Toters deductions.",
     )
 
-    overview_col4.metric(
+    render_kpi(
+        overview_col4,
         "Revenue Kept",
         format_rate(metrics.get("retained_revenue_rate")),
+        "Net Revenue ÷ Gross Revenue",
+        "Share of customer spending retained by the restaurant.",
     )
 
     overview_col5, overview_col6, overview_col7 = st.columns(3)
 
-    overview_col5.metric(
+    render_kpi(
+        overview_col5,
         "Total Platform Cost",
         format_lbp(metrics.get("total_platform_cost", 0.0)),
+        "Listing Fees + Marketing Cost + VAT + Other Costs",
+        "Total recorded cost of operating through Toters.",
     )
 
-    overview_col6.metric(
+    render_kpi(
+        overview_col6,
         "Average Order Value",
         format_lbp(metrics.get("average_order_value", 0.0)),
+        "Gross Revenue ÷ Total Orders",
+        "Average customer spend per order before deductions.",
     )
 
-    overview_col7.metric(
+    render_kpi(
+        overview_col7,
         "Analysis Period",
         period_display,
+        "Max Order Date − Min Order Date + 1",
+        "Number of days covered by the consolidated orders.",
     )
 
     # -------------------------------------------------------------
@@ -565,72 +606,108 @@ def display_toters_results(
         st.columns(4)
     )
 
-    financial_col1.metric(
+    render_kpi(
+        financial_col1,
         "Gross Revenue",
         format_lbp(metrics.get("gross_revenue", 0.0)),
+        "Σ Gross Revenue",
+        "Total customer spending before Toters deductions.",
     )
 
-    financial_col2.metric(
+    render_kpi(
+        financial_col2,
         "Net Revenue",
         format_lbp(metrics.get("net_order_revenue", 0.0)),
+        "Gross Revenue − Total Platform Cost",
+        "Revenue remaining after recorded Toters deductions.",
     )
 
-    financial_col3.metric(
+    render_kpi(
+        financial_col3,
         "Revenue Kept",
         format_rate(metrics.get("retained_revenue_rate")),
+        "Net Revenue ÷ Gross Revenue",
+        "Share of customer spending retained by the restaurant.",
     )
 
-    financial_col4.metric(
+    render_kpi(
+        financial_col4,
         "Total Platform Cost",
         format_lbp(metrics.get("total_platform_cost", 0.0)),
+        "Listing Fees + Marketing Cost + VAT + Other Costs",
+        "Total recorded cost of operating through Toters.",
     )
 
     financial_col5, financial_col6, financial_col7, financial_col8 = (
         st.columns(4)
     )
 
-    financial_col5.metric(
+    render_kpi(
+        financial_col5,
         "Platform Cost Rate",
         format_rate(metrics.get("platform_cost_rate")),
+        "Total Platform Cost ÷ Gross Revenue",
+        "Share of gross revenue absorbed by all Toters costs.",
     )
 
-    financial_col6.metric(
+    render_kpi(
+        financial_col6,
         "Listing Fees Paid",
         format_lbp(metrics.get("total_listing_fee", 0.0)),
+        "Σ Listing Fees",
+        "Total commission amount charged by Toters.",
     )
 
-    financial_col7.metric(
+    render_kpi(
+        financial_col7,
         "Effective Commission Rate",
         format_rate(metrics.get("listing_fee_rate")),
+        "Listing Fees Paid ÷ Gross Revenue",
+        "Actual commission rate calculated from the invoice.",
     )
 
-    financial_col8.metric(
+    render_kpi(
+        financial_col8,
         "VAT Paid",
         format_lbp(metrics.get("total_vat", 0.0)),
+        "Σ VAT",
+        "Total VAT charged on Toters fees and services.",
     )
 
     financial_col9, financial_col10, financial_col11 = st.columns(3)
 
-    financial_col9.metric(
+    render_kpi(
+        financial_col9,
         "Average Net Order Value",
         format_lbp(metrics.get("average_net_order_value", 0.0)),
+        "Net Revenue ÷ Total Orders",
+        "Average revenue retained by the restaurant per order.",
     )
 
-    financial_col10.metric(
+    render_kpi(
+        financial_col10,
         "Median Order Value",
         format_lbp(metrics.get("median_order_value", 0.0)),
+        "Median of Positive Gross Order Values",
+        "Middle order value after sorting positive orders.",
     )
 
-    financial_col11.metric(
+    render_kpi(
+        financial_col11,
         "Minimum Order Value",
         format_lbp(metrics.get("minimum_order_value", 0.0)),
+        "Minimum of Positive Gross Order Values",
+        "Lowest positive customer order value.",
     )
 
     financial_col12 = st.columns(1)[0]
 
-    financial_col12.metric(
+    render_kpi(
+        financial_col12,
         "Maximum Order Value",
         format_lbp(metrics.get("maximum_order_value", 0.0)),
+        "Maximum Gross Order Value",
+        "Highest customer order value.",
     )
 
     # -------------------------------------------------------------
@@ -642,24 +719,36 @@ def display_toters_results(
         st.columns(4)
     )
 
-    marketing_col1.metric(
+    render_kpi(
+        marketing_col1,
         "Marketing Cost",
         format_lbp(metrics.get("total_marketing_cost", 0.0)),
+        "Σ Marketing Deductions",
+        "Total marketing-related deductions charged to the restaurant.",
     )
 
-    marketing_col2.metric(
+    render_kpi(
+        marketing_col2,
         "Marketing Cost Rate",
         format_rate(metrics.get("marketing_cost_rate")),
+        "Marketing Cost ÷ Gross Revenue",
+        "Share of gross revenue absorbed by marketing deductions.",
     )
 
-    marketing_col3.metric(
+    render_kpi(
+        marketing_col3,
         "Orders With Marketing",
         f"{metrics.get('orders_with_marketing', 0):,}",
+        "Count of Orders With Marketing Cost > 0",
+        "Number of orders carrying at least one marketing deduction.",
     )
 
-    marketing_col4.metric(
+    render_kpi(
+        marketing_col4,
         "Marketing Order Share",
         format_rate(metrics.get("marketing_order_share")),
+        "Orders With Marketing ÷ Total Orders",
+        "Share of all orders affected by marketing deductions.",
     )
 
     st.subheader("Toters Processing Status")
