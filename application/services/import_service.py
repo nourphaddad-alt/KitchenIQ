@@ -3,7 +3,8 @@ from __future__ import annotations
 import pandas as pd
 
 from application.dto.analysis_result import AnalysisResult
-from connectors.base.import_result import ImportResult
+from application.services.order_consolidation import consolidate_orders
+from connectors.base.import_result import ImportOutcome, ImportResult
 from connectors.toters.parser import parse_invoice
 from domain.financial_event import FinancialEvent
 from utils.toters_kpis import calculate_toters_kpis
@@ -20,67 +21,66 @@ class ImportService:
         currency: str = "LBP",
     ) -> AnalysisResult:
         import_result = parse_invoice(dataframe, currency=currency)
+        outcome = import_result.outcome
+
+        if outcome is ImportOutcome.FAILED:
+            raise ValueError(self._build_failure_message(import_result))
 
         records: list[FinancialEvent] = list(import_result.records)
 
-        metrics: dict[str, object] = {}
-        diagnostics: list[dict[str, object]] = []
-        recommendations: list[dict[str, object]] = []
+        consolidated_orders = consolidate_orders(records)
 
-        if records:
-            aggregated_rows: list[dict[str, object]] = []
+        if consolidated_orders.empty:
+            raise ValueError(
+                "Toters import failed: "
+                f"{len(records)} financial event(s) were imported, but none "
+                "could be consolidated into a valid order. Every event was "
+                "either a settlement entry or missing an order reference."
+            )
 
-            for record in records:
-                row: dict[str, object] = {
-                    "order_id": record.order_reference,
-                    "order_date": record.occurred_at,
-                    "gross_revenue": 0.0,
-                    "store_listing_fee": 0.0,
-                    "marketing_fixed_price": 0.0,
-                    "marketing_immediate_discount": 0.0,
-                    "vat": 0.0,
-                }
-
-                amount = float(abs(record.signed_amount))
-
-                if record.event_type == "gross_revenue":
-                    row["gross_revenue"] = amount
-                elif record.event_type == "platform_commission":
-                    row["store_listing_fee"] = amount
-                elif record.event_type == "marketing_fixed_price":
-                    row["marketing_fixed_price"] = amount
-                elif record.event_type == "marketing_discount":
-                    row["marketing_immediate_discount"] = amount
-                elif record.event_type == "vat":
-                    row["vat"] = amount
-
-                row["total_marketing_cost"] = (
-                    float(row["marketing_fixed_price"])
-                    + float(row["marketing_immediate_discount"])
-                )
-                row["total_platform_cost"] = (
-                    float(row["store_listing_fee"])
-                    + float(row["total_marketing_cost"])
-                    + float(row["vat"])
-                )
-                row["net_order_revenue"] = (
-                    float(row["gross_revenue"])
-                    - float(row["total_platform_cost"])
-                )
-                aggregated_rows.append(row)
-
-            consolidated = pd.DataFrame(aggregated_rows)
-
-            metrics = calculate_toters_kpis(consolidated)
-            diagnostics = detect_toters_problems(metrics)
-            recommendations = generate_toters_recommendations(diagnostics)
+        metrics = calculate_toters_kpis(consolidated_orders)
+        diagnostics = detect_toters_problems(metrics)
+        recommendations = generate_toters_recommendations(diagnostics)
 
         return AnalysisResult(
             restaurant_name=restaurant_name,
             platform=platform,
             import_result=import_result,
+            outcome=outcome,
             records=records,
             metrics=metrics,
             diagnostics=diagnostics,
             recommendations=recommendations,
         )
+
+    @staticmethod
+    def _build_failure_message(import_result: ImportResult) -> str:
+        if import_result.has_blocking_issues:
+            details = "; ".join(
+                issue.message
+                for issue in import_result.issues
+                if issue.severity == "blocking"
+            )
+            return f"Toters import failed schema validation: {details}"
+
+        if import_result.rows_received == 0:
+            return (
+                "Toters import failed: the uploaded report contains no "
+                "data rows to import."
+            )
+
+        details = "; ".join(
+            issue.message
+            for issue in import_result.issues
+            if issue.severity == "error"
+        )
+        message = (
+            "Toters import failed: "
+            f"{import_result.rows_received} row(s) were received, but 0 "
+            "could be converted into financial events."
+        )
+
+        if details:
+            message += f" Reasons: {details}"
+
+        return message

@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from application.dto.analysis_result import AnalysisResult
 from application.dto.health_score import HealthScore
+from connectors.base.import_result import ImportOutcome
 
 
 class HealthScoreService:
     def calculate(self, analysis_result: AnalysisResult) -> HealthScore:
+        if analysis_result.outcome is ImportOutcome.FAILED:
+            raise ValueError(
+                "Health Score cannot be calculated for a failed Toters "
+                "import."
+            )
+
         metrics = analysis_result.metrics
 
         score = 100

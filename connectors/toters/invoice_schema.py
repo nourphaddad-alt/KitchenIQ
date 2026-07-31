@@ -6,13 +6,33 @@ from typing import Iterable
 import pandas as pd
 
 
-REQUIRED_COLUMNS = {
-    "ID",
-    "Order Code",
-    "Transaction Date",
-    "Category",
-    "Details",
-    "Amount",
+# Canonical internal column names used everywhere downstream of the
+# Toters connector (row_parser.py reads only these names).
+CANONICAL_COLUMNS = [
+    "transaction_id",
+    "order_reference",
+    "amount",
+    "details",
+    "transaction_date",
+    "category",
+]
+
+REQUIRED_COLUMNS = set(CANONICAL_COLUMNS)
+
+# Known Toters source aliases, keyed by a case/whitespace-normalized form
+# of the raw header. Add new source labels here only, never outside the
+# Toters connector.
+_SOURCE_ALIASES: dict[str, str] = {
+    "id": "transaction_id",
+    "order code": "order_reference",
+    "order_code": "order_reference",
+    "amount(lbp)": "amount",
+    "amount (lbp)": "amount",
+    "amount": "amount",
+    "details": "details",
+    "date": "transaction_date",
+    "transaction date": "transaction_date",
+    "category": "category",
 }
 
 
@@ -23,11 +43,47 @@ class SchemaValidationResult:
     extra_columns: list[str]
 
 
+def _normalized_alias_key(column: object) -> str:
+    """
+    Fold a raw column name into the lookup key used by _SOURCE_ALIASES:
+    trimmed, internal whitespace collapsed, case-insensitive.
+    """
+
+    text = " ".join(str(column).strip().split())
+
+    return text.lower()
+
+
+def normalize_column_names(
+    columns: Iterable[object],
+) -> list[str]:
+    """
+    Map raw Toters source column names to canonical internal names.
+
+    Columns that do not match a known Toters alias are kept as their
+    stripped original name so they are still reported as extra columns
+    instead of silently replacing a required field.
+    """
+
+    normalized = []
+
+    for column in columns:
+        alias_key = _normalized_alias_key(column)
+        normalized.append(
+            _SOURCE_ALIASES.get(alias_key, str(column).strip())
+        )
+
+    return normalized
+
+
 def validate_invoice_schema(
     dataframe: pd.DataFrame,
 ) -> SchemaValidationResult:
     """
-    Validate that a Toters invoice report contains all required columns.
+    Validate that a Toters invoice report contains all canonical columns.
+
+    Must be called after normalize_column_names() has already mapped
+    source aliases into canonical internal names.
 
     Extra columns are allowed because Toters may add fields in future exports.
     """
@@ -45,16 +101,3 @@ def validate_invoice_schema(
         missing_columns=missing_columns,
         extra_columns=extra_columns,
     )
-
-
-def normalize_column_names(
-    columns: Iterable[object],
-) -> list[str]:
-    """
-    Return clean column names without modifying the source dataframe.
-    """
-
-    return [
-        str(column).strip()
-        for column in columns
-    ]

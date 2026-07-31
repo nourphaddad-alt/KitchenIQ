@@ -4,7 +4,6 @@ import streamlit as st
 from application.dto.analysis_result import AnalysisResult
 from application.services.health_score_service import HealthScoreService
 from application.services.import_service import ImportService
-from data.schemas.toters import TOTERS_REQUIRED_COLUMNS
 from data.schemas.uber_eats import UBER_EATS_REQUIRED_COLUMNS
 from utils.analyser import analyse_delivery_platform
 from utils.loader import load_file
@@ -794,19 +793,8 @@ if st.button(
     # TOTERS
     # -------------------------------------------------------------
     elif platform == "Toters":
-        valid_columns, column_message = (
-            validate_required_columns(
-                raw_data,
-                TOTERS_REQUIRED_COLUMNS,
-            )
-        )
-
-        if not valid_columns:
-            st.error(
-                column_message
-            )
-            st.stop()
-
+        # Schema validation is owned by the Toters connector so there is a
+        # single, authoritative source of truth for required columns.
         try:
             import_service = ImportService()
             analysis_result = import_service.run_toters_import(

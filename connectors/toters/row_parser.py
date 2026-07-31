@@ -72,12 +72,12 @@ def parse_invoice_row(
     Convert one validated Toters invoice row into one FinancialEvent.
     """
 
-    source_activity_id = normalize_optional_text(row.get("ID"))
+    source_activity_id = normalize_optional_text(row.get("transaction_id"))
 
     if source_activity_id is None:
         raise ValueError("Source activity ID is missing.")
 
-    source_category = normalize_optional_text(row.get("Category"))
+    source_category = normalize_optional_text(row.get("category"))
 
     if source_category is None:
         raise ValueError("Category is missing.")
@@ -90,13 +90,13 @@ def parse_invoice_row(
     return FinancialEvent(
         source_row_number=source_row_number,
         source_activity_id=source_activity_id,
-        order_reference=normalize_optional_text(row.get("Order Code")),
-        occurred_at=parse_datetime(row.get("Transaction Date")),
+        order_reference=normalize_optional_text(row.get("order_reference")),
+        occurred_at=parse_datetime(row.get("transaction_date")),
         source_category=source_category,
         event_type=category_mapping.event_type,
-        signed_amount=parse_decimal(row.get("Amount")),
+        signed_amount=parse_decimal(row.get("amount")),
         currency=currency,
         mapping_status=category_mapping.mapping_status,
         confidence=category_mapping.confidence,
-        details=normalize_optional_text(row.get("Details")),
+        details=normalize_optional_text(row.get("details")),
     )
