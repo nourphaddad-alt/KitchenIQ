@@ -445,25 +445,57 @@ def display_toters_results(
     )
 
     st.subheader("Executive Summary")
-    st.write(build_executive_summary(restaurant, analysis_result))
+    st.write(
+        build_executive_summary(
+            restaurant,
+            analysis_result,
+        )
+    )
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
-    col1.metric("Health Score", f"{health_score.score}/100")
-    col2.metric("Health Label", health_score.label)
-    col3.metric("Interpretation", health_score.interpretation)
+    col1.metric(
+        "Health Score",
+        f"{health_score.score}/100",
+    )
+
+    col2.metric(
+        "Health Label",
+        health_score.label,
+    )
+
+    st.markdown("**Interpretation**")
+    st.write(health_score.interpretation)
 
     st.subheader("Top Three Priorities")
 
-    for index, problem in enumerate(problems[:3], start=1):
-        severity = problem.get("severity", "medium").title()
-        title = problem.get("title", "Priority")
+    for index, problem in enumerate(
+        problems[:3],
+        start=1,
+    ):
+        severity = problem.get(
+            "severity",
+            "medium",
+        ).title()
+
+        title = problem.get(
+            "title",
+            "Priority",
+        )
+
         business_area = (
-            problem.get("business_area", "general")
+            problem.get(
+                "business_area",
+                "general",
+            )
             .replace("_", " ")
             .title()
         )
-        description = problem.get("message", "")
+
+        description = problem.get(
+            "message",
+            "",
+        )
 
         st.markdown(f"### {index}. {title}")
         st.write(f"**Severity:** {severity}")
@@ -471,9 +503,7 @@ def display_toters_results(
         st.write(description)
         st.divider()
 
-    st.subheader(
-        "Toters Performance Overview"
-    )
+    st.subheader("Toters Performance Overview")
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -484,69 +514,51 @@ def display_toters_results(
 
     col2.metric(
         "Gross Revenue",
-        format_lbp(
-            metrics.get("gross_revenue", 0.0)
-        ),
+        format_lbp(metrics.get("gross_revenue", 0.0)),
     )
 
     col3.metric(
         "Net Order Revenue",
-        format_lbp(
-            metrics.get("net_order_revenue", 0.0)
-        ),
+        format_lbp(metrics.get("net_order_revenue", 0.0)),
     )
 
     col4.metric(
         "Total Platform Cost",
-        format_lbp(
-            metrics.get("total_platform_cost", 0.0)
-        ),
+        format_lbp(metrics.get("total_platform_cost", 0.0)),
     )
 
     col5, col6, col7, col8 = st.columns(4)
 
     col5.metric(
         "Average Order Value",
-        format_lbp(
-            metrics.get("average_order_value", 0.0)
-        ),
+        format_lbp(metrics.get("average_order_value", 0.0)),
     )
 
     col6.metric(
         "Platform Cost Rate",
-        format_rate(
-            metrics.get("platform_cost_rate")
-        ),
+        format_rate(metrics.get("platform_cost_rate")),
     )
 
     col7.metric(
         "Marketing Cost",
-        format_lbp(
-            metrics.get("total_marketing_cost", 0.0)
-        ),
+        format_lbp(metrics.get("total_marketing_cost", 0.0)),
     )
 
     col8.metric(
         "Marketing Cost Rate",
-        format_rate(
-            metrics.get("marketing_cost_rate")
-        ),
+        format_rate(metrics.get("marketing_cost_rate")),
     )
 
     col9, col10, col11, col12 = st.columns(4)
 
     col9.metric(
         "Listing Fee Rate",
-        format_rate(
-            metrics.get("listing_fee_rate")
-        ),
+        format_rate(metrics.get("listing_fee_rate")),
     )
 
     col10.metric(
         "Retained Revenue Rate",
-        format_rate(
-            metrics.get("retained_revenue_rate")
-        ),
+        format_rate(metrics.get("retained_revenue_rate")),
     )
 
     col11.metric(
@@ -556,86 +568,61 @@ def display_toters_results(
 
     col12.metric(
         "Marketing Order Share",
-        format_rate(
-            metrics.get("marketing_order_share")
-        ),
+        format_rate(metrics.get("marketing_order_share")),
     )
 
-    st.subheader(
-        "Additional Toters Insights"
-    )
+    st.subheader("Additional Toters Insights")
 
     col13, col14, col15, col16 = st.columns(4)
 
     col13.metric(
         "Average Net Order Value",
-        format_lbp(
-            metrics.get("average_net_order_value", 0.0)
-        ),
+        format_lbp(metrics.get("average_net_order_value", 0.0)),
     )
 
     col14.metric(
         "Median Order Value",
-        format_lbp(
-            metrics.get("median_order_value", 0.0)
-        ),
+        format_lbp(metrics.get("median_order_value", 0.0)),
     )
 
     col15.metric(
         "Listing Fees Paid",
-        format_lbp(
-            metrics.get("total_listing_fee", 0.0)
-        ),
+        format_lbp(metrics.get("total_listing_fee", 0.0)),
     )
 
     col16.metric(
         "VAT Paid",
-        format_lbp(
-            metrics.get("total_vat", 0.0)
-        ),
+        format_lbp(metrics.get("total_vat", 0.0)),
     )
 
     col17, col18, col19 = st.columns(3)
 
     col17.metric(
         "Minimum Order Value",
-        format_lbp(
-            metrics.get("minimum_order_value", 0.0)
-        ),
+        format_lbp(metrics.get("minimum_order_value", 0.0)),
     )
 
     col18.metric(
         "Maximum Order Value",
-        format_lbp(
-            metrics.get("maximum_order_value", 0.0)
-        ),
+        format_lbp(metrics.get("maximum_order_value", 0.0)),
     )
+
+    period_days = metrics.get("period_days")
 
     col19.metric(
         "Analysis Period",
-        (
-            f"{metrics.get('period_days')} days"
-            if metrics.get("period_days") is not None
-            else "Unavailable"
-        ),
+        f"{period_days} days" if period_days is not None else "Unavailable",
     )
 
-    st.subheader(
-        "Toters Processing Status"
-    )
+    st.subheader("Toters Processing Status")
 
     st.success(
         "The Toters invoice ledger has been validated, "
         "consolidated, analysed and diagnosed successfully."
     )
 
-    display_problem_section(
-        problems
-    )
-
-    display_recommendation_section(
-        recommendations
-    )
+    display_problem_section(problems)
+    display_recommendation_section(recommendations)
 
     with st.expander(
         "View consolidated Toters orders",
@@ -663,7 +650,6 @@ def display_toters_results(
             width="stretch",
             hide_index=True,
         )
-
 
 st.title(
     "🍽️ KitchenIQ"
