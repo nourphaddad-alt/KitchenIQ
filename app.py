@@ -715,6 +715,9 @@ def display_toters_results(
     # -------------------------------------------------------------
     st.subheader("📣 Marketing Performance")
 
+    # -------------------------------------------------------------
+    # MARKETING SUMMARY
+    # -------------------------------------------------------------
     marketing_col1, marketing_col2, marketing_col3, marketing_col4 = (
         st.columns(4)
     )
@@ -723,8 +726,8 @@ def display_toters_results(
         marketing_col1,
         "Marketing Cost",
         format_lbp(metrics.get("total_marketing_cost", 0.0)),
-        "Σ Marketing Deductions",
-        "Total marketing-related deductions charged to the restaurant.",
+        "Σ Net Marketing Deductions",
+        "Net marketing cost charged after recorded promotion credits.",
     )
 
     render_kpi(
@@ -732,7 +735,7 @@ def display_toters_results(
         "Marketing Cost Rate",
         format_rate(metrics.get("marketing_cost_rate")),
         "Marketing Cost ÷ Gross Revenue",
-        "Share of gross revenue absorbed by marketing deductions.",
+        "Share of gross revenue absorbed by net marketing deductions.",
     )
 
     render_kpi(
@@ -740,7 +743,7 @@ def display_toters_results(
         "Orders With Marketing",
         f"{metrics.get('orders_with_marketing', 0):,}",
         "Count of Orders With Marketing Cost > 0",
-        "Number of orders carrying at least one marketing deduction.",
+        "Number of orders carrying at least one net marketing deduction.",
     )
 
     render_kpi(
@@ -749,6 +752,170 @@ def display_toters_results(
         format_rate(metrics.get("marketing_order_share")),
         "Orders With Marketing ÷ Total Orders",
         "Share of all orders affected by marketing deductions.",
+    )
+
+    # -------------------------------------------------------------
+    # PROMOTION COST STRUCTURE
+    # -------------------------------------------------------------
+    st.markdown("#### Promotion Cost Structure")
+
+    promotion_col1, promotion_col2, promotion_col3 = st.columns(3)
+
+    render_kpi(
+        promotion_col1,
+        "Gross Promotion Spend",
+        format_lbp(metrics.get("gross_promotion_spend", 0.0)),
+        (
+            "Immediate Discount + Fixed Price + Free Delivery "
+            "+ Punch Card + Highlight"
+        ),
+        "Promotion charges before Toters credits or reimbursements.",
+    )
+
+    render_kpi(
+        promotion_col2,
+        "Promotion Credits",
+        format_lbp(metrics.get("promotion_credits", 0.0)),
+        (
+            "|Marketing Credit Notes| "
+            "+ |Highlight Credit Notes|"
+        ),
+        "Promotion costs reimbursed or reversed by Toters.",
+    )
+
+    render_kpi(
+        promotion_col3,
+        "Net Promotion Spend",
+        format_lbp(metrics.get("net_promotion_spend", 0.0)),
+        "Gross Promotion Spend − Promotion Credits",
+        "Actual promotion cost remaining after recorded credits.",
+    )
+
+    # -------------------------------------------------------------
+    # PROMOTION TYPE BREAKDOWN
+    # -------------------------------------------------------------
+    st.markdown("#### Promotion Type Breakdown")
+
+    (
+        promotion_type_col1,
+        promotion_type_col2,
+        promotion_type_col3,
+        promotion_type_col4,
+    ) = st.columns(4)
+
+    render_kpi(
+        promotion_type_col1,
+        "Immediate Discounts",
+        format_lbp(metrics.get("total_marketing_discount", 0.0)),
+        "Σ Marketing Immediate Discount",
+        "Customer discounts charged through immediate-discount campaigns.",
+    )
+
+    render_kpi(
+        promotion_type_col2,
+        "Fixed Price Promotions",
+        format_lbp(metrics.get("total_marketing_fixed_price", 0.0)),
+        "Σ Marketing Item Fixed Price",
+        "Cost of campaigns selling selected products at fixed prices.",
+    )
+
+    render_kpi(
+        promotion_type_col3,
+        "Free Delivery",
+        format_lbp(metrics.get("total_marketing_free_delivery", 0.0)),
+        "Σ Marketing Free Delivery",
+        "Restaurant-funded cost of free-delivery promotions.",
+    )
+
+    render_kpi(
+        promotion_type_col4,
+        "Punch Card",
+        format_lbp(metrics.get("total_marketing_punch_card", 0.0)),
+        "Σ Marketing Punch Card",
+        "Cost of loyalty or repeat-purchase punch-card promotions.",
+    )
+
+    promotion_type_col5, promotion_type_col6 = st.columns(2)
+
+    render_kpi(
+        promotion_type_col5,
+        "Marketing Highlight",
+        format_lbp(metrics.get("total_marketing_highlight", 0.0)),
+        "Σ Marketing Highlight",
+        "Cost of paid visibility or highlighted placement on Toters.",
+    )
+
+    render_kpi(
+        promotion_type_col6,
+        "Marketing Credit Notes",
+        format_lbp(
+            abs(metrics.get("total_marketing_credit_note", 0.0))
+        ),
+        "|Σ Marketing Credit Note|",
+        "Credits that reduce previously charged promotion costs.",
+    )
+
+    promotion_type_col7 = st.columns(1)[0]
+
+    render_kpi(
+        promotion_type_col7,
+        "Highlight Credit Notes",
+        format_lbp(
+            abs(
+                metrics.get(
+                    "total_marketing_highlight_credit_note",
+                    0.0,
+                )
+            )
+        ),
+        "|Σ Marketing Highlights Credit Note|",
+        "Credits that reduce previously charged highlight costs.",
+    )
+
+    # -------------------------------------------------------------
+    # PROMOTION PROFITABILITY
+    # -------------------------------------------------------------
+    st.markdown("#### Promotion Profitability")
+
+    profitability_col1, profitability_col2, profitability_col3 = (
+        st.columns(3)
+    )
+
+    render_kpi(
+        profitability_col1,
+        "Effective Commission Rate",
+        format_rate(metrics.get("listing_fee_rate")),
+        "Listing Fees Paid ÷ Gross Revenue",
+        "Actual commission rate calculated from the Toters invoice.",
+    )
+
+    render_kpi(
+        profitability_col2,
+        "Commission on Promotions",
+        format_lbp(
+            metrics.get(
+                "total_commission_on_promotions",
+                0.0,
+            )
+        ),
+        (
+            "Σ Promotion Spend by Type "
+            "× Effective Commission Rate"
+        ),
+        "Commission attributable to revenue affected by promotions.",
+    )
+
+    render_kpi(
+        profitability_col3,
+        "True Promotion Cost",
+        format_lbp(
+            metrics.get(
+                "true_promotion_cost",
+                0.0,
+            )
+        ),
+        "Net Promotion Spend + Commission on Promotions",
+        "Total economic cost of promotions after credits and commission.",
     )
 
     st.subheader("Toters Processing Status")

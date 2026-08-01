@@ -1,11 +1,100 @@
 import pandas as pd
 
+from utils.financial import commission_on
+
+
+_MARKETING_DETAIL_COLUMNS = [
+    "marketing_discount",
+    "marketing_fixed_price",
+    "marketing_free_delivery",
+    "marketing_punch_card",
+    "marketing_highlight",
+    "marketing_credit_note",
+    "marketing_highlight_credit_note",
+]
+
+
+_PROMOTION_CHARGE_COLUMNS = [
+    "marketing_discount",
+    "marketing_fixed_price",
+    "marketing_free_delivery",
+    "marketing_punch_card",
+    "marketing_highlight",
+]
+
+
+_PROMOTION_CREDIT_COLUMNS = [
+    "marketing_credit_note",
+    "marketing_highlight_credit_note",
+]
+
+
+def _empty_kpis() -> dict:
+    """
+    Return the complete zero-value Toters KPI contract.
+    """
+    return {
+        "total_orders": 0,
+        "gross_revenue": 0.0,
+        "net_order_revenue": 0.0,
+        "total_platform_cost": 0.0,
+        "total_listing_fee": 0.0,
+        "total_marketing_cost": 0.0,
+        "total_vat": 0.0,
+        "average_order_value": 0.0,
+        "average_net_order_value": 0.0,
+        "platform_cost_rate": None,
+        "listing_fee_rate": None,
+        "marketing_cost_rate": None,
+        "vat_rate": None,
+        "retained_revenue_rate": None,
+        "orders_with_marketing": 0,
+        "marketing_order_share": None,
+        "median_order_value": 0.0,
+        "minimum_order_value": 0.0,
+        "maximum_order_value": 0.0,
+        "period_days": None,
+        "total_marketing_discount": 0.0,
+        "total_marketing_fixed_price": 0.0,
+        "total_marketing_free_delivery": 0.0,
+        "total_marketing_punch_card": 0.0,
+        "total_marketing_highlight": 0.0,
+        "total_marketing_credit_note": 0.0,
+        "total_marketing_highlight_credit_note": 0.0,
+        "gross_promotion_spend": 0.0,
+        "promotion_credits": 0.0,
+        "net_promotion_spend": 0.0,
+        "commission_on_marketing_discount": 0.0,
+        "commission_on_marketing_fixed_price": 0.0,
+        "commission_on_marketing_free_delivery": 0.0,
+        "commission_on_marketing_punch_card": 0.0,
+        "commission_on_marketing_highlight": 0.0,
+        "total_commission_on_promotions": 0.0,
+        "true_promotion_cost": 0.0,
+    }
+
+
+def _ensure_optional_marketing_columns(
+    working: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Add missing detailed marketing columns as zeros.
+
+    This keeps the KPI engine compatible with older consolidated
+    datasets that only contain total_marketing_cost.
+    """
+    for column in _MARKETING_DETAIL_COLUMNS:
+        if column not in working.columns:
+            working[column] = 0.0
+
+    return working
+
 
 def calculate_toters_kpis(data: pd.DataFrame) -> dict:
     """
     Calculate order-level KPIs from a consolidated Toters dataset.
 
-    Expected columns:
+    Required legacy columns:
     - order_id
     - order_date
     - gross_revenue
@@ -14,8 +103,10 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
     - vat
     - total_platform_cost
     - net_order_revenue
-    """
 
+    Detailed marketing columns are optional and default to zero when
+    importing an older consolidated dataset.
+    """
     required_columns = [
         "order_id",
         "order_date",
@@ -40,30 +131,11 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         )
 
     if data.empty:
-        return {
-            "total_orders": 0,
-            "gross_revenue": 0.0,
-            "net_order_revenue": 0.0,
-            "total_platform_cost": 0.0,
-            "total_listing_fee": 0.0,
-            "total_marketing_cost": 0.0,
-            "total_vat": 0.0,
-            "average_order_value": 0.0,
-            "average_net_order_value": 0.0,
-            "platform_cost_rate": None,
-            "listing_fee_rate": None,
-            "marketing_cost_rate": None,
-            "vat_rate": None,
-            "retained_revenue_rate": None,
-            "orders_with_marketing": 0,
-            "marketing_order_share": None,
-            "median_order_value": 0.0,
-            "minimum_order_value": 0.0,
-            "maximum_order_value": 0.0,
-            "period_days": None,
-        }
+        return _empty_kpis()
 
-    working = data.copy()
+    working = _ensure_optional_marketing_columns(
+        data.copy()
+    )
 
     numeric_columns = [
         "gross_revenue",
@@ -72,6 +144,7 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         "vat",
         "total_platform_cost",
         "net_order_revenue",
+        *_MARKETING_DETAIL_COLUMNS,
     ]
 
     for column in numeric_columns:
@@ -85,10 +158,8 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         errors="coerce",
     )
 
-    # Every unique order ID remains part of the total order count.
     total_orders = working["order_id"].nunique()
 
-    # Revenue-based order statistics exclude records with no gross revenue.
     revenue_orders = working.loc[
         working["gross_revenue"] > 0
     ].copy()
@@ -99,6 +170,49 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
     total_listing_fee = working["store_listing_fee"].sum()
     total_marketing_cost = working["total_marketing_cost"].sum()
     total_vat = working["vat"].sum()
+
+    total_marketing_discount = working[
+        "marketing_discount"
+    ].sum()
+
+    total_marketing_fixed_price = working[
+        "marketing_fixed_price"
+    ].sum()
+
+    total_marketing_free_delivery = working[
+        "marketing_free_delivery"
+    ].sum()
+
+    total_marketing_punch_card = working[
+        "marketing_punch_card"
+    ].sum()
+
+    total_marketing_highlight = working[
+        "marketing_highlight"
+    ].sum()
+
+    total_marketing_credit_note = working[
+        "marketing_credit_note"
+    ].sum()
+
+    total_marketing_highlight_credit_note = working[
+        "marketing_highlight_credit_note"
+    ].sum()
+
+    gross_promotion_spend = sum(
+        working[column].sum()
+        for column in _PROMOTION_CHARGE_COLUMNS
+    )
+
+    promotion_credits = sum(
+        abs(working[column].sum())
+        for column in _PROMOTION_CREDIT_COLUMNS
+    )
+
+    net_promotion_spend = (
+        gross_promotion_spend
+        - promotion_credits
+    )
 
     average_order_value = (
         gross_revenue / total_orders
@@ -122,6 +236,44 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         total_listing_fee / gross_revenue
         if gross_revenue > 0
         else None
+    )
+
+    commission_on_marketing_discount = commission_on(
+        total_marketing_discount,
+        listing_fee_rate,
+    )
+
+    commission_on_marketing_fixed_price = commission_on(
+        total_marketing_fixed_price,
+        listing_fee_rate,
+    )
+
+    commission_on_marketing_free_delivery = commission_on(
+        total_marketing_free_delivery,
+        listing_fee_rate,
+    )
+
+    commission_on_marketing_punch_card = commission_on(
+        total_marketing_punch_card,
+        listing_fee_rate,
+    )
+
+    commission_on_marketing_highlight = commission_on(
+        total_marketing_highlight,
+        listing_fee_rate,
+    )
+
+    total_commission_on_promotions = (
+        commission_on_marketing_discount
+        + commission_on_marketing_fixed_price
+        + commission_on_marketing_free_delivery
+        + commission_on_marketing_punch_card
+        + commission_on_marketing_highlight
+    )
+
+    true_promotion_cost = (
+        net_promotion_spend
+        + total_commission_on_promotions
     )
 
     marketing_cost_rate = (
@@ -160,11 +312,19 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         minimum_order_value = 0.0
         maximum_order_value = 0.0
     else:
-        gross_order_values = revenue_orders["gross_revenue"]
+        gross_order_values = revenue_orders[
+            "gross_revenue"
+        ]
 
-        median_order_value = gross_order_values.median()
-        minimum_order_value = gross_order_values.min()
-        maximum_order_value = gross_order_values.max()
+        median_order_value = (
+            gross_order_values.median()
+        )
+        minimum_order_value = (
+            gross_order_values.min()
+        )
+        maximum_order_value = (
+            gross_order_values.max()
+        )
 
     valid_dates = working["order_date"].dropna()
 
@@ -195,8 +355,65 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         "retained_revenue_rate": retained_revenue_rate,
         "orders_with_marketing": orders_with_marketing,
         "marketing_order_share": marketing_order_share,
-        "median_order_value": float(median_order_value),
-        "minimum_order_value": float(minimum_order_value),
-        "maximum_order_value": float(maximum_order_value),
+        "median_order_value": float(
+            median_order_value
+        ),
+        "minimum_order_value": float(
+            minimum_order_value
+        ),
+        "maximum_order_value": float(
+            maximum_order_value
+        ),
         "period_days": period_days,
+        "total_marketing_discount": float(
+            total_marketing_discount
+        ),
+        "total_marketing_fixed_price": float(
+            total_marketing_fixed_price
+        ),
+        "total_marketing_free_delivery": float(
+            total_marketing_free_delivery
+        ),
+        "total_marketing_punch_card": float(
+            total_marketing_punch_card
+        ),
+        "total_marketing_highlight": float(
+            total_marketing_highlight
+        ),
+        "total_marketing_credit_note": float(
+            total_marketing_credit_note
+        ),
+        "total_marketing_highlight_credit_note": float(
+            total_marketing_highlight_credit_note
+        ),
+        "gross_promotion_spend": float(
+            gross_promotion_spend
+        ),
+        "promotion_credits": float(
+            promotion_credits
+        ),
+        "net_promotion_spend": float(
+            net_promotion_spend
+        ),
+        "commission_on_marketing_discount": float(
+            commission_on_marketing_discount
+        ),
+        "commission_on_marketing_fixed_price": float(
+            commission_on_marketing_fixed_price
+        ),
+        "commission_on_marketing_free_delivery": float(
+            commission_on_marketing_free_delivery
+        ),
+        "commission_on_marketing_punch_card": float(
+            commission_on_marketing_punch_card
+        ),
+        "commission_on_marketing_highlight": float(
+            commission_on_marketing_highlight
+        ),
+        "total_commission_on_promotions": float(
+            total_commission_on_promotions
+        ),
+        "true_promotion_cost": float(
+            true_promotion_cost
+        ),
     }
