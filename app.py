@@ -746,40 +746,37 @@ def display_toters_results(
     )
 
     # -------------------------------------------------------------
-    # PROMOTION COST STRUCTURE
+    # MARKETING COST STRUCTURE
     # -------------------------------------------------------------
-    st.markdown("#### Promotion Cost Structure")
+    st.markdown("#### Marketing Cost Structure")
 
     promotion_col1, promotion_col2, promotion_col3 = st.columns(3)
 
     render_kpi(
         promotion_col1,
-        "Gross Promotion Spend",
-        format_lbp(metrics.get("gross_promotion_spend", 0.0)),
+        "Discount Promotions",
+        format_lbp(metrics.get("net_promotion_spend", 0.0)),
+        "Gross Discount Promotions − Promotion Credits",
         (
-            "Immediate Discount + Fixed Price + Free Delivery "
-            "+ Punch Card + Highlight"
+            "Net cost of immediate discounts, fixed-price campaigns, "
+            "free delivery and punch-card promotions."
         ),
-        "Promotion charges before Toters credits or reimbursements.",
     )
 
     render_kpi(
         promotion_col2,
-        "Promotion Credits",
-        format_lbp(metrics.get("promotion_credits", 0.0)),
-        (
-            "|Marketing Credit Notes| "
-            "+ |Highlight Credit Notes|"
-        ),
-        "Promotion costs reimbursed or reversed by Toters.",
+        "Platform Advertising",
+        format_lbp(metrics.get("total_marketing_highlight", 0.0)),
+        "Σ Marketing Highlight",
+        "Advertising and paid visibility purchased through Toters.",
     )
 
     render_kpi(
         promotion_col3,
-        "Net Promotion Spend",
-        format_lbp(metrics.get("net_promotion_spend", 0.0)),
-        "Gross Promotion Spend − Promotion Credits",
-        "Actual promotion cost remaining after recorded credits.",
+        "Total Marketing Spend",
+        format_lbp(metrics.get("total_marketing_cost", 0.0)),
+        "Discount Promotions + Platform Advertising",
+        "Total net marketing cost charged through Toters.",
     )
 
     # -------------------------------------------------------------
@@ -858,20 +855,10 @@ def display_toters_results(
     # -------------------------------------------------------------
     st.markdown("#### Promotion Profitability")
 
-    profitability_col1, profitability_col2, profitability_col3 = (
-        st.columns(3)
-    )
+    profitability_col1, profitability_col2 = st.columns(2)
 
     render_kpi(
         profitability_col1,
-        "Effective Commission Rate",
-        format_rate(metrics.get("listing_fee_rate")),
-        "Listing Fees Paid ÷ Gross Revenue",
-        "Actual commission rate calculated from the Toters invoice.",
-    )
-
-    render_kpi(
-        profitability_col2,
         "Commission on Promotions",
         format_lbp(
             metrics.get(
@@ -880,15 +867,18 @@ def display_toters_results(
             )
         ),
         (
-            "Σ Promotion Spend by Type "
+            "Discount Promotions "
             "× Effective Commission Rate"
         ),
-        "Commission attributable to revenue affected by promotions.",
+        (
+            "Commission attributable to immediate discounts "
+            "and fixed-price promotions."
+        ),
     )
 
     render_kpi(
-        profitability_col3,
-        "True Promotion Cost",
+        profitability_col2,
+        "Fully Loaded Promotion Cost",
         format_lbp(
             metrics.get(
                 "true_promotion_cost",
@@ -896,7 +886,10 @@ def display_toters_results(
             )
         ),
         "Net Promotion Spend + Commission on Promotions",
-        "Total economic cost of promotions after credits and commission.",
+        (
+            "Total economic cost of discount promotions after "
+            "credits and attributable commission."
+        ),
     )
 
     st.subheader("Toters Processing Status")
