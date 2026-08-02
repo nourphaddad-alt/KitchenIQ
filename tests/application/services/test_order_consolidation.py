@@ -61,7 +61,7 @@ def test_consolidate_orders_groups_multiple_events_into_one_order() -> None:
         _event(
             source_row_number=4,
             source_category="Value Added Tax",
-            event_type="vat",
+            event_type="vat_order",
             signed_amount=Decimal("5000"),
         ),
     ]

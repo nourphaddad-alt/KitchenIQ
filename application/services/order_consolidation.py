@@ -158,7 +158,7 @@ def consolidate_orders(
                 _cost_contribution(record)
             )
 
-        elif record.event_type == "vat":
+        elif record.event_type == "vat_order":
             order["vat"] += _cost_contribution(record)
 
         elif record.event_type == "courier_cost":

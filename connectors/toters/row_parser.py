@@ -149,6 +149,24 @@ def parse_invoice_row(
             f"Unknown category: {source_category!r}"
         )
 
+    details = normalize_optional_text(
+        row.get("details")
+    )
+
+    event_type = category_mapping.event_type
+
+    if event_type == "vat":
+        normalized_details = (
+            details.lower()
+            if details is not None
+            else ""
+        )
+
+        if "marketing highlight" in normalized_details:
+            event_type = "vat_marketing_highlight"
+        else:
+            event_type = "vat_order"
+
     return FinancialEvent(
         source_row_number=source_row_number,
         source_activity_id=source_activity_id,
@@ -159,14 +177,12 @@ def parse_invoice_row(
             row.get("transaction_date")
         ),
         source_category=source_category,
-        event_type=category_mapping.event_type,
+        event_type=event_type,
         signed_amount=parse_decimal(
             row.get("amount")
         ),
         currency=currency,
         mapping_status=category_mapping.mapping_status,
         confidence=category_mapping.confidence,
-        details=normalize_optional_text(
-            row.get("details")
-        ),
+        details=details,
     )

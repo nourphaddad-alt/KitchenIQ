@@ -41,6 +41,9 @@ def _empty_kpis() -> dict:
         "total_listing_fee": 0.0,
         "total_marketing_cost": 0.0,
         "total_vat": 0.0,
+        "vat_on_orders": 0.0,
+        "vat_on_marketing": 0.0,
+        "total_courier_cost": 0.0,
         "average_order_value": 0.0,
         "average_net_order_value": 0.0,
         "platform_cost_rate": None,
@@ -90,7 +93,10 @@ def _ensure_optional_marketing_columns(
     return working
 
 
-def calculate_toters_kpis(data: pd.DataFrame) -> dict:
+def calculate_toters_kpis(
+    data: pd.DataFrame,
+    account_level_costs: dict[str, float] | None = None,
+) -> dict:
     """
     Calculate order-level KPIs from a consolidated Toters dataset.
 
@@ -107,6 +113,8 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
     Detailed marketing columns are optional and default to zero when
     importing an older consolidated dataset.
     """
+    account_level_costs = account_level_costs or {}
+
     required_columns = [
         "order_id",
         "order_date",
@@ -168,11 +176,61 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
     total_orders = revenue_orders["order_id"].nunique()
 
     gross_revenue = working["gross_revenue"].sum()
-    net_order_revenue = working["net_order_revenue"].sum()
-    total_platform_cost = working["total_platform_cost"].sum()
     total_listing_fee = working["store_listing_fee"].sum()
-    total_marketing_cost = working["total_marketing_cost"].sum()
-    total_vat = working["vat"].sum()
+
+    order_marketing_cost = working[
+        "total_marketing_cost"
+    ].sum()
+
+    account_marketing_highlight = float(
+        account_level_costs.get(
+            "marketing_highlight",
+            0.0,
+        )
+    )
+
+    account_highlight_credit = float(
+        account_level_costs.get(
+            "marketing_highlight_credit_note",
+            0.0,
+        )
+    )
+
+    total_marketing_cost = (
+        order_marketing_cost
+        + account_marketing_highlight
+        - account_highlight_credit
+    )
+
+    vat_on_orders = working["vat"].sum()
+
+    vat_on_marketing = float(
+        account_level_costs.get(
+            "vat_marketing_highlight",
+            0.0,
+        )
+    )
+
+    total_vat = (
+        vat_on_orders
+        + vat_on_marketing
+    )
+
+    total_courier_cost = working[
+        "courier_cost"
+    ].sum()
+
+    total_platform_cost = (
+        total_listing_fee
+        + total_marketing_cost
+        + total_vat
+        + total_courier_cost
+    )
+
+    net_order_revenue = (
+        gross_revenue
+        - total_platform_cost
+    )
 
     total_marketing_discount = working[
         "marketing_discount"
@@ -190,17 +248,27 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         "marketing_punch_card"
     ].sum()
 
-    total_marketing_highlight = working[
+    order_marketing_highlight = working[
         "marketing_highlight"
     ].sum()
+
+    total_marketing_highlight = (
+        order_marketing_highlight
+        + account_marketing_highlight
+    )
 
     total_marketing_credit_note = working[
         "marketing_credit_note"
     ].sum()
 
-    total_marketing_highlight_credit_note = working[
+    order_marketing_highlight_credit_note = working[
         "marketing_highlight_credit_note"
     ].sum()
+
+    total_marketing_highlight_credit_note = (
+        order_marketing_highlight_credit_note
+        - account_highlight_credit
+    )
 
     gross_promotion_spend = sum(
         working[column].sum()
@@ -266,12 +334,13 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         listing_fee_rate,
     )
 
+    # Commission attribution applies only to promotions that reduce
+    # the commissionable order revenue: immediate discounts and
+    # fixed-price promotions. Highlight, free delivery and punch-card
+    # costs are excluded from this attribution.
     total_commission_on_promotions = (
         commission_on_marketing_discount
         + commission_on_marketing_fixed_price
-        + commission_on_marketing_free_delivery
-        + commission_on_marketing_punch_card
-        + commission_on_marketing_highlight
     )
 
     true_promotion_cost = (
@@ -347,6 +416,9 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         "total_listing_fee": float(total_listing_fee),
         "total_marketing_cost": float(total_marketing_cost),
         "total_vat": float(total_vat),
+        "vat_on_orders": float(vat_on_orders),
+        "vat_on_marketing": float(vat_on_marketing),
+        "total_courier_cost": float(total_courier_cost),
         "average_order_value": float(average_order_value),
         "average_net_order_value": float(
             average_net_order_value

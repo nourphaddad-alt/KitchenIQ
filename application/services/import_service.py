@@ -3,6 +3,9 @@ from __future__ import annotations
 import pandas as pd
 
 from application.dto.analysis_result import AnalysisResult
+from application.services.account_level_costs import (
+    aggregate_account_level_costs,
+)
 from application.services.order_consolidation import consolidate_orders
 from connectors.base.import_result import ImportOutcome, ImportResult
 from connectors.toters.parser import parse_invoice
@@ -30,6 +33,10 @@ class ImportService:
 
         consolidated_orders = consolidate_orders(records)
 
+        account_level_costs = aggregate_account_level_costs(
+            records
+        )
+
         if consolidated_orders.empty:
             raise ValueError(
                 "Toters import failed: "
@@ -38,7 +45,10 @@ class ImportService:
                 "either a settlement entry or missing an order reference."
             )
 
-        metrics = calculate_toters_kpis(consolidated_orders)
+        metrics = calculate_toters_kpis(
+            consolidated_orders,
+            account_level_costs=account_level_costs,
+        )
         diagnostics = detect_toters_problems(metrics)
         recommendations = generate_toters_recommendations(diagnostics)
 

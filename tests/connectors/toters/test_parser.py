@@ -160,3 +160,36 @@ def test_real_toters_header_format_is_accepted() -> None:
     assert event.order_reference == "order-1001"
     assert event.signed_amount == Decimal("150000")
     assert event.event_type == "gross_revenue"
+
+
+def test_order_vat_is_classified_from_details() -> None:
+    dataframe = pd.DataFrame([
+        _make_row(
+            Category="Value Added Tax",
+            Details="VAT for order 30049-54080",
+        )
+    ])
+
+    result = parse_invoice(dataframe, currency="LBP")
+
+    assert result.rows_parsed == 1
+    assert result.records[0].event_type == "vat_order"
+
+
+def test_marketing_highlight_vat_is_classified_from_details() -> None:
+    dataframe = pd.DataFrame([
+        _make_row(
+            Category="Value Added Tax",
+            Details="VAT for marketing highlights top-up (113523)",
+            **{"Order Code": None},
+        )
+    ])
+
+    result = parse_invoice(dataframe, currency="LBP")
+
+    assert result.rows_parsed == 1
+    assert (
+        result.records[0].event_type
+        == "vat_marketing_highlight"
+    )
+    assert result.records[0].order_reference is None
