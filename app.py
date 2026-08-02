@@ -1021,6 +1021,8 @@ def display_toters_results(
             hide_index=True,
         )
 
+st.caption("Build: 2026-08-02 financial-reconciliation-v2")
+
 st.title(
     "🍽️ KitchenIQ"
 )
