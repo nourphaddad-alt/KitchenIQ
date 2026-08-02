@@ -3,6 +3,7 @@ import streamlit as st
 from application.dto.analysis_result import AnalysisResult
 from application.services.health_score_service import HealthScoreService
 from application.services.import_service import ImportService
+from application.services.order_consolidation import consolidate_orders
 from data.schemas.uber_eats import UBER_EATS_REQUIRED_COLUMNS
 from utils.analyser import analyse_delivery_platform
 from utils.loader import load_file
@@ -686,24 +687,14 @@ def display_toters_results(
 
     render_kpi(
         financial_col10,
-        "Median Order Value",
-        format_lbp(metrics.get("median_order_value", 0.0)),
-        "Median of Positive Gross Order Values",
-        "Middle order value after sorting positive orders.",
-    )
-
-    render_kpi(
-        financial_col11,
         "Minimum Order Value",
         format_lbp(metrics.get("minimum_order_value", 0.0)),
         "Minimum of Positive Gross Order Values",
         "Lowest positive customer order value.",
     )
 
-    financial_col12 = st.columns(1)[0]
-
     render_kpi(
-        financial_col12,
+        financial_col11,
         "Maximum Order Value",
         format_lbp(metrics.get("maximum_order_value", 0.0)),
         "Maximum Gross Order Value",
@@ -835,7 +826,7 @@ def display_toters_results(
         "Cost of loyalty or repeat-purchase punch-card promotions.",
     )
 
-    promotion_type_col5, promotion_type_col6 = st.columns(2)
+    promotion_type_col5 = st.columns(1)[0]
 
     render_kpi(
         promotion_type_col5,
@@ -843,16 +834,6 @@ def display_toters_results(
         format_lbp(metrics.get("total_marketing_highlight", 0.0)),
         "Σ Marketing Highlight",
         "Cost of paid visibility or highlighted placement on Toters.",
-    )
-
-    render_kpi(
-        promotion_type_col6,
-        "Marketing Credit Notes",
-        format_lbp(
-            abs(metrics.get("total_marketing_credit_note", 0.0))
-        ),
-        "|Σ Marketing Credit Note|",
-        "Credits that reduce previously charged promotion costs.",
     )
 
     promotion_type_col7 = st.columns(1)[0]
@@ -927,6 +908,98 @@ def display_toters_results(
 
     display_problem_section(problems)
     display_recommendation_section(recommendations)
+
+    with st.expander(
+        "Commission Base Audit",
+        expanded=False,
+    ):
+        consolidated_orders = consolidate_orders(
+            analysis_result.records
+        )
+
+        if consolidated_orders.empty:
+            st.info(
+                "No consolidated orders are available "
+                "for commission auditing."
+            )
+        else:
+            audit_data = consolidated_orders.copy()
+
+            audit_data["promotion_discount"] = (
+                audit_data["marketing_discount"]
+                + audit_data["marketing_fixed_price"]
+            )
+
+            audit_data["revenue_after_discount"] = (
+                audit_data["gross_revenue"]
+                - audit_data["promotion_discount"]
+            )
+
+            audit_data["commission_rate_on_gross"] = (
+                audit_data["store_listing_fee"]
+                / audit_data["gross_revenue"].where(
+                    audit_data["gross_revenue"] > 0
+                )
+            )
+
+            audit_data["commission_rate_after_discount"] = (
+                audit_data["store_listing_fee"]
+                / audit_data["revenue_after_discount"].where(
+                    audit_data["revenue_after_discount"] > 0
+                )
+            )
+
+            gross_revenue_total = audit_data[
+                "gross_revenue"
+            ].sum()
+
+            adjusted_revenue_total = audit_data[
+                "revenue_after_discount"
+            ].sum()
+
+            listing_fee_total = audit_data[
+                "store_listing_fee"
+            ].sum()
+
+            weighted_rate_on_gross = (
+                listing_fee_total / gross_revenue_total
+                if gross_revenue_total > 0
+                else None
+            )
+
+            weighted_rate_after_discount = (
+                listing_fee_total / adjusted_revenue_total
+                if adjusted_revenue_total > 0
+                else None
+            )
+
+            audit_col1, audit_col2 = st.columns(2)
+
+            audit_col1.metric(
+                "Weighted Rate on Gross Revenue",
+                format_rate(weighted_rate_on_gross),
+            )
+
+            audit_col2.metric(
+                "Weighted Rate After Discounts",
+                format_rate(weighted_rate_after_discount),
+            )
+
+            audit_columns = [
+                "order_id",
+                "gross_revenue",
+                "promotion_discount",
+                "revenue_after_discount",
+                "store_listing_fee",
+                "commission_rate_on_gross",
+                "commission_rate_after_discount",
+            ]
+
+            st.dataframe(
+                audit_data[audit_columns],
+                width="stretch",
+                hide_index=True,
+            )
 
     with st.expander(
         "View consolidated Toters orders",

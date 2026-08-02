@@ -158,11 +158,14 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
         errors="coerce",
     )
 
-    total_orders = working["order_id"].nunique()
-
+    # Only rows with positive gross revenue are genuine customer orders.
+    # Cost-only references, including standalone Courier On Demand events,
+    # remain in financial totals but do not increase the order count.
     revenue_orders = working.loc[
         working["gross_revenue"] > 0
     ].copy()
+
+    total_orders = revenue_orders["order_id"].nunique()
 
     gross_revenue = working["gross_revenue"].sum()
     net_order_revenue = working["net_order_revenue"].sum()
@@ -295,8 +298,8 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
     )
 
     orders_with_marketing = int(
-        working.loc[
-            working["total_marketing_cost"] > 0,
+        revenue_orders.loc[
+            revenue_orders["total_marketing_cost"] > 0,
             "order_id",
         ].nunique()
     )
@@ -326,7 +329,7 @@ def calculate_toters_kpis(data: pd.DataFrame) -> dict:
             gross_order_values.max()
         )
 
-    valid_dates = working["order_date"].dropna()
+    valid_dates = revenue_orders["order_date"].dropna()
 
     if valid_dates.empty:
         period_days = None

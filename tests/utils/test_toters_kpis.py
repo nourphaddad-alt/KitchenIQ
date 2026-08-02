@@ -119,3 +119,79 @@ def test_calculate_toters_kpis_calculates_true_promotion_cost() -> None:
 
     assert result["total_commission_on_promotions"] == 7750.0
     assert result["true_promotion_cost"] == 34750.0
+
+
+def test_cost_only_courier_activity_does_not_increase_order_count() -> None:
+    customer_order = _base_row(
+        order_id="order-1001",
+        gross_revenue=100000.0,
+        total_platform_cost=57000.0,
+        net_order_revenue=43000.0,
+    )
+
+    courier_only_activity = _base_row(
+        order_id="courier-activity-1",
+        gross_revenue=0.0,
+        store_listing_fee=0.0,
+        total_marketing_cost=0.0,
+        vat=0.0,
+        total_platform_cost=5000.0,
+        net_order_revenue=-5000.0,
+        marketing_discount=0.0,
+        marketing_fixed_price=0.0,
+        marketing_free_delivery=0.0,
+        marketing_punch_card=0.0,
+        marketing_highlight=0.0,
+        marketing_credit_note=0.0,
+        marketing_highlight_credit_note=0.0,
+    )
+
+    result = calculate_toters_kpis(
+        pd.DataFrame(
+            [
+                customer_order,
+                courier_only_activity,
+            ]
+        )
+    )
+
+    assert result["total_orders"] == 1
+    assert result["average_order_value"] == 100000.0
+
+
+def test_cost_only_courier_activity_does_not_increase_order_count() -> None:
+    customer_order = _base_row(
+        order_id="order-1001",
+        gross_revenue=100000.0,
+        total_platform_cost=57000.0,
+        net_order_revenue=43000.0,
+    )
+
+    courier_only_activity = _base_row(
+        order_id="courier-activity-1",
+        gross_revenue=0.0,
+        store_listing_fee=0.0,
+        total_marketing_cost=0.0,
+        vat=0.0,
+        total_platform_cost=5000.0,
+        net_order_revenue=-5000.0,
+        marketing_discount=0.0,
+        marketing_fixed_price=0.0,
+        marketing_free_delivery=0.0,
+        marketing_punch_card=0.0,
+        marketing_highlight=0.0,
+        marketing_credit_note=0.0,
+        marketing_highlight_credit_note=0.0,
+    )
+
+    result = calculate_toters_kpis(
+        pd.DataFrame(
+            [
+                customer_order,
+                courier_only_activity,
+            ]
+        )
+    )
+
+    assert result["total_orders"] == 1
+    assert result["average_order_value"] == 100000.0

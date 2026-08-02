@@ -21,8 +21,8 @@ def _make_dataframe() -> pd.DataFrame:
         },
         {
             "ID": "activity-2",
-            "Order Code": "order-1002",
-            "Transaction Date": "2026-03-02 12:30:00",
+            "Order Code": "order-1001",
+            "Transaction Date": "2026-03-01 12:30:00",
             "Category": "Store Listing Fee",
             "Details": "Listing fee",
             "Amount": "15000",
@@ -75,7 +75,7 @@ def test_import_service_preserves_records_and_metrics() -> None:
     )
 
     assert all(isinstance(record, FinancialEvent) for record in result.records)
-    assert result.metrics["total_orders"] == 2
+    assert result.metrics["total_orders"] == 1
     assert result.metrics["gross_revenue"] == 150000.0
     assert result.metrics["total_listing_fee"] == 15000.0
 
