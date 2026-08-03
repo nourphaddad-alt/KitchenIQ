@@ -1160,9 +1160,6 @@ if st.button(
                 platform=platform,
             )
 
-            st.write("### DEBUG – Raw Metrics")
-            st.json(analysis_result.metrics)
-
         except ValueError as error:
             st.error(
                 str(error)
