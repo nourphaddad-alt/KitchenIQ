@@ -42,6 +42,8 @@ def _empty_kpis() -> dict:
         "total_marketing_cost": 0.0,
         "total_vat": 0.0,
         "vat_on_orders": 0.0,
+        "vat_on_listing_fees": 0.0,
+        "vat_on_courier": 0.0,
         "vat_on_marketing": 0.0,
         "total_courier_cost": 0.0,
         "average_order_value": 0.0,
@@ -122,6 +124,7 @@ def calculate_toters_kpis(
         "store_listing_fee",
         "total_marketing_cost",
         "vat",
+        "courier_cost",
         "total_platform_cost",
         "net_order_revenue",
     ]
@@ -150,6 +153,7 @@ def calculate_toters_kpis(
         "store_listing_fee",
         "total_marketing_cost",
         "vat",
+        "courier_cost",
         "total_platform_cost",
         "net_order_revenue",
         *_MARKETING_DETAIL_COLUMNS,
@@ -202,7 +206,36 @@ def calculate_toters_kpis(
         - account_highlight_credit
     )
 
-    vat_on_orders = working["vat"].sum()
+    total_courier_cost = working[
+        "courier_cost"
+    ].sum()
+
+    # Courier On Demand can appear as a cost-only ledger activity.
+    # VAT attached to such a row belongs to the courier charge,
+    # not to the restaurant's listing-fee VAT.
+    courier_only_mask = (
+        (working["gross_revenue"] <= 0)
+        & (working["store_listing_fee"] == 0)
+        & (working["total_marketing_cost"] == 0)
+        & (working["courier_cost"] > 0)
+    )
+
+    vat_on_courier = working.loc[
+        courier_only_mask,
+        "vat",
+    ].sum()
+
+    referenced_vat = working["vat"].sum()
+
+    vat_on_listing_fees = (
+        referenced_vat
+        - vat_on_courier
+    )
+
+    # Kept temporarily for compatibility with existing consumers.
+    # It now represents VAT attached to customer revenue orders,
+    # excluding cost-only courier VAT.
+    vat_on_orders = vat_on_listing_fees
 
     vat_on_marketing = float(
         account_level_costs.get(
@@ -212,13 +245,10 @@ def calculate_toters_kpis(
     )
 
     total_vat = (
-        vat_on_orders
+        vat_on_listing_fees
+        + vat_on_courier
         + vat_on_marketing
     )
-
-    total_courier_cost = working[
-        "courier_cost"
-    ].sum()
 
     total_platform_cost = (
         total_listing_fee
@@ -417,6 +447,8 @@ def calculate_toters_kpis(
         "total_marketing_cost": float(total_marketing_cost),
         "total_vat": float(total_vat),
         "vat_on_orders": float(vat_on_orders),
+        "vat_on_listing_fees": float(vat_on_listing_fees),
+        "vat_on_courier": float(vat_on_courier),
         "vat_on_marketing": float(vat_on_marketing),
         "total_courier_cost": float(total_courier_cost),
         "average_order_value": float(average_order_value),

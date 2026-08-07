@@ -152,3 +152,47 @@ def test_commission_attribution_excludes_highlight_spend() -> None:
 
     assert result["listing_fee_rate"] == 0.25
     assert result["total_commission_on_promotions"] == 5500.0
+
+
+def test_cost_only_courier_vat_is_not_classified_as_order_vat() -> None:
+    customer_order = _base_row(
+        order_id="order-1001",
+        gross_revenue=100000.0,
+        store_listing_fee=25000.0,
+        vat=2750.0,
+        courier_cost=0.0,
+    )
+
+    courier_only_activity = _base_row(
+        order_id="courier-activity-1",
+        gross_revenue=0.0,
+        store_listing_fee=0.0,
+        total_marketing_cost=0.0,
+        vat=550.0,
+        courier_cost=5000.0,
+        total_platform_cost=5550.0,
+        net_order_revenue=-5550.0,
+        marketing_discount=0.0,
+        marketing_fixed_price=0.0,
+        marketing_free_delivery=0.0,
+        marketing_punch_card=0.0,
+        marketing_highlight=0.0,
+        marketing_credit_note=0.0,
+        marketing_highlight_credit_note=0.0,
+    )
+
+    result = calculate_toters_kpis(
+        pd.DataFrame(
+            [
+                customer_order,
+                courier_only_activity,
+            ]
+        )
+    )
+
+    assert result["total_orders"] == 1
+    assert result["vat_on_orders"] == 2750.0
+    assert result["vat_on_listing_fees"] == 2750.0
+    assert result["vat_on_courier"] == 550.0
+    assert result["total_vat"] == 3300.0
+    assert result["total_courier_cost"] == 5000.0
