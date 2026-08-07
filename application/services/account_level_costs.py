@@ -24,22 +24,22 @@ def aggregate_account_level_costs(
         if record.event_type == "settlement":
             continue
 
-        amount = abs(float(record.signed_amount))
+        signed_amount = float(record.signed_amount)
 
         if record.event_type == "marketing_highlight":
-            totals["marketing_highlight"] += amount
+            totals["marketing_highlight"] += -signed_amount
 
         elif record.event_type == "marketing_credit_note":
-            totals["marketing_credit_note"] += amount
+            totals["marketing_credit_note"] += signed_amount
 
         elif record.event_type == "vat_marketing_highlight":
-            totals["vat_marketing_highlight"] += amount
+            totals["vat_marketing_highlight"] += -signed_amount
 
         elif record.event_type == "vat_marketing_credit_note":
-            totals["vat_marketing_credit_note"] += amount
+            totals["vat_marketing_credit_note"] += signed_amount
 
         elif record.event_type == "marketing_highlight_credit_note":
-            totals["marketing_highlight_credit_note"] += amount
+            totals["marketing_highlight_credit_note"] += signed_amount
 
         else:
             raise ValueError(

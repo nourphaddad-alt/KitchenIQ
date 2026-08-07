@@ -200,9 +200,19 @@ def test_account_level_marketing_credit_and_vat_reduce_platform_cost() -> None:
     assert metrics["gross_revenue"] == pytest.approx(100000.0)
 
     assert metrics["total_marketing_credit_note"] == pytest.approx(
-        -4000.0
+        4000.0
     )
+    assert metrics["discount_promotion_spend"] == pytest.approx(
+        10000.0
+    )
+    assert metrics["net_marketing_highlight"] == pytest.approx(0.0)
     assert metrics["total_marketing_cost"] == pytest.approx(6000.0)
+
+    assert (
+        metrics["discount_promotion_spend"]
+        + metrics["net_marketing_highlight"]
+        - metrics["total_marketing_credit_note"]
+    ) == pytest.approx(metrics["total_marketing_cost"])
 
     assert metrics["vat_on_listing_fees"] == pytest.approx(2750.0)
     assert metrics["vat_on_marketing_credit_note"] == pytest.approx(

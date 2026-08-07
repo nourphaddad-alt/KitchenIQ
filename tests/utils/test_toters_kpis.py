@@ -35,17 +35,23 @@ def test_calculate_toters_kpis_preserves_marketing_breakdown() -> None:
     assert result["total_marketing_free_delivery"] == 3000.0
     assert result["total_marketing_punch_card"] == 2000.0
     assert result["total_marketing_highlight"] == 4000.0
-    assert result["total_marketing_credit_note"] == -3000.0
-    assert result["total_marketing_highlight_credit_note"] == -1000.0
+    assert result["total_marketing_credit_note"] == 3000.0
+    assert result["total_marketing_highlight_credit_note"] == 1000.0
 
 
 def test_calculate_toters_kpis_calculates_promotion_totals() -> None:
     result = calculate_toters_kpis(pd.DataFrame([_base_row()]))
 
-    assert result["gross_promotion_spend"] == 31000.0
-    assert result["promotion_credits"] == 4000.0
-    assert result["net_promotion_spend"] == 27000.0
+    assert result["discount_promotion_spend"] == 27000.0
+    assert result["net_marketing_highlight"] == 3000.0
+    assert result["total_marketing_credit_note"] == 3000.0
     assert result["total_marketing_cost"] == 27000.0
+    assert (
+        result["discount_promotion_spend"]
+        + result["net_marketing_highlight"]
+        - result["total_marketing_credit_note"]
+        == result["total_marketing_cost"]
+    )
 
 
 def test_calculate_toters_kpis_supports_legacy_data() -> None:
@@ -65,27 +71,28 @@ def test_calculate_toters_kpis_supports_legacy_data() -> None:
     result = calculate_toters_kpis(pd.DataFrame([legacy_row]))
 
     assert result["total_marketing_cost"] == 27000.0
-    assert result["gross_promotion_spend"] == 0.0
-    assert result["promotion_credits"] == 0.0
-    assert result["net_promotion_spend"] == 0.0
+    assert result["discount_promotion_spend"] == 0.0
 
 
-def test_calculate_toters_kpis_calculates_commission_by_promotion_type() -> None:
+def test_calculate_toters_kpis_calculates_attributable_commission() -> None:
     result = calculate_toters_kpis(pd.DataFrame([_base_row()]))
 
     assert result["listing_fee_rate"] == 0.25
     assert result["commission_on_marketing_discount"] == 2500.0
     assert result["commission_on_marketing_fixed_price"] == 3000.0
-    assert result["commission_on_marketing_free_delivery"] == 750.0
-    assert result["commission_on_marketing_punch_card"] == 500.0
-    assert result["commission_on_marketing_highlight"] == 1000.0
+    assert result["total_commission_on_promotions"] == 5500.0
+
+    assert "commission_on_marketing_free_delivery" not in result
+    assert "commission_on_marketing_punch_card" not in result
+    assert "commission_on_marketing_highlight" not in result
 
 
-def test_calculate_toters_kpis_calculates_true_promotion_cost() -> None:
+def test_calculate_toters_kpis_calculates_fully_loaded_promotion_cost() -> None:
     result = calculate_toters_kpis(pd.DataFrame([_base_row()]))
 
+    assert result["discount_promotion_spend"] == 27000.0
     assert result["total_commission_on_promotions"] == 5500.0
-    assert result["true_promotion_cost"] == 32500.0
+    assert result["fully_loaded_promotion_cost"] == 32500.0
 
 
 def test_cost_only_courier_activity_does_not_increase_order_count() -> None:
@@ -133,8 +140,8 @@ def test_account_level_costs_are_merged_into_financial_totals() -> None:
     )
 
     assert result["total_marketing_highlight"] == 14000.0
-    assert result["total_marketing_highlight_credit_note"] == -2000.0
-    assert result["vat_on_orders"] == 5000.0
+    assert result["total_marketing_highlight_credit_note"] == 2000.0
+    assert result["net_marketing_highlight"] == 12000.0
     assert result["vat_on_marketing"] == 1100.0
     assert result["total_vat"] == 6100.0
     assert result["total_marketing_cost"] == 36000.0
@@ -191,7 +198,6 @@ def test_cost_only_courier_vat_is_not_classified_as_order_vat() -> None:
     )
 
     assert result["total_orders"] == 1
-    assert result["vat_on_orders"] == 2750.0
     assert result["vat_on_listing_fees"] == 2750.0
     assert result["vat_on_courier"] == 550.0
     assert result["total_vat"] == 3300.0
@@ -205,5 +211,9 @@ def test_median_order_value_is_not_part_of_kpi_contract() -> None:
     )
 
     assert "median_order_value" not in result
+    assert "gross_promotion_spend" not in result
+    assert "promotion_credits" not in result
+    assert "net_promotion_spend" not in result
+    assert "true_promotion_cost" not in result
     assert result["minimum_order_value"] == 100000.0
     assert result["maximum_order_value"] == 100000.0

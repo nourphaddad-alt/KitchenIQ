@@ -578,7 +578,7 @@ def display_toters_results(
         overview_col5,
         "Total Platform Cost",
         format_lbp(metrics.get("total_platform_cost", 0.0)),
-        "Listing Fees + Marketing Cost + VAT + Other Costs",
+        "Listing Fees + Marketing Cost + VAT + Courier Cost",
         "Total recorded cost of operating through Toters.",
     )
 
@@ -635,7 +635,7 @@ def display_toters_results(
         financial_col4,
         "Total Platform Cost",
         format_lbp(metrics.get("total_platform_cost", 0.0)),
-        "Listing Fees + Marketing Cost + VAT + Other Costs",
+        "Listing Fees + Marketing Cost + VAT + Courier Cost",
         "Total recorded cost of operating through Toters.",
     )
 
@@ -671,8 +671,8 @@ def display_toters_results(
         financial_col8,
         "VAT Paid",
         format_lbp(metrics.get("total_vat", 0.0)),
-        "Σ VAT",
-        "Total VAT charged on Toters fees and services.",
+        "Listing-Fee VAT + Courier VAT + Net Marketing VAT",
+        "Net VAT charged after recorded VAT credits.",
     )
 
     financial_col9, financial_col10, financial_col11 = st.columns(3)
@@ -718,7 +718,7 @@ def display_toters_results(
         "Marketing Cost",
         format_lbp(metrics.get("total_marketing_cost", 0.0)),
         "Σ Net Marketing Deductions",
-        "Net marketing cost charged after recorded promotion credits.",
+        "Net marketing cost charged after recorded marketing credits.",
     )
 
     render_kpi(
@@ -750,32 +750,64 @@ def display_toters_results(
     # -------------------------------------------------------------
     st.markdown("#### Marketing Cost Structure")
 
-    promotion_col1, promotion_col2, promotion_col3 = st.columns(3)
+    (
+        promotion_col1,
+        promotion_col2,
+        promotion_col3,
+        promotion_col4,
+    ) = st.columns(4)
 
     render_kpi(
         promotion_col1,
         "Discount Promotions",
-        format_lbp(metrics.get("net_promotion_spend", 0.0)),
-        "Gross Discount Promotions − Promotion Credits",
+        format_lbp(
+            metrics.get(
+                "discount_promotion_spend",
+                0.0,
+            )
+        ),
         (
-            "Net cost of immediate discounts, fixed-price campaigns, "
-            "free delivery and punch-card promotions."
+            "Immediate Discounts + Fixed Price + "
+            "Free Delivery + Punch Card"
+        ),
+        (
+            "Recorded discount-promotion charges. "
+            "General marketing credits are not allocated here."
         ),
     )
 
     render_kpi(
         promotion_col2,
         "Platform Advertising",
-        format_lbp(metrics.get("total_marketing_highlight", 0.0)),
-        "Σ Marketing Highlight",
-        "Advertising and paid visibility purchased through Toters.",
+        format_lbp(metrics.get("net_marketing_highlight", 0.0)),
+        "Marketing Highlight − Highlight Credit Notes",
+        "Net paid visibility cost after recorded highlight credits.",
     )
 
     render_kpi(
         promotion_col3,
+        "General Marketing Credits",
+        format_lbp(
+            metrics.get(
+                "total_marketing_credit_note",
+                0.0,
+            )
+        ),
+        "Σ Marketing Credit Note",
+        (
+            "General Toters marketing credits kept unallocated "
+            "unless the invoice identifies their purpose."
+        ),
+    )
+
+    render_kpi(
+        promotion_col4,
         "Total Marketing Spend",
         format_lbp(metrics.get("total_marketing_cost", 0.0)),
-        "Discount Promotions + Platform Advertising",
+        (
+            "Discount Promotions + Platform Advertising "
+            "− General Marketing Credits"
+        ),
         "Total net marketing cost charged through Toters.",
     )
 
@@ -839,14 +871,12 @@ def display_toters_results(
         promotion_type_col7,
         "Highlight Credit Notes",
         format_lbp(
-            abs(
-                metrics.get(
-                    "total_marketing_highlight_credit_note",
-                    0.0,
-                )
+            metrics.get(
+                "total_marketing_highlight_credit_note",
+                0.0,
             )
         ),
-        "|Σ Marketing Highlights Credit Note|",
+        "Σ Marketing Highlights Credit Note",
         "Credits that reduce previously charged highlight costs.",
     )
 
@@ -867,7 +897,7 @@ def display_toters_results(
             )
         ),
         (
-            "Discount Promotions "
+            "(Immediate Discounts + Fixed Price Promotions) "
             "× Effective Commission Rate"
         ),
         (
@@ -881,14 +911,15 @@ def display_toters_results(
         "Fully Loaded Promotion Cost",
         format_lbp(
             metrics.get(
-                "true_promotion_cost",
+                "fully_loaded_promotion_cost",
                 0.0,
             )
         ),
-        "Net Promotion Spend + Commission on Promotions",
+        "Discount Promotions + Commission on Promotions",
         (
-            "Total economic cost of discount promotions after "
-            "credits and attributable commission."
+            "Economic cost of recorded discount promotions plus "
+            "attributable commission. General marketing credits "
+            "are not assigned to promotions."
         ),
     )
 

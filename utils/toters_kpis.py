@@ -14,18 +14,11 @@ _MARKETING_DETAIL_COLUMNS = [
 ]
 
 
-_PROMOTION_CHARGE_COLUMNS = [
+_DISCOUNT_PROMOTION_CHARGE_COLUMNS = [
     "marketing_discount",
     "marketing_fixed_price",
     "marketing_free_delivery",
     "marketing_punch_card",
-    "marketing_highlight",
-]
-
-
-_PROMOTION_CREDIT_COLUMNS = [
-    "marketing_credit_note",
-    "marketing_highlight_credit_note",
 ]
 
 
@@ -41,7 +34,6 @@ def _empty_kpis() -> dict:
         "total_listing_fee": 0.0,
         "total_marketing_cost": 0.0,
         "total_vat": 0.0,
-        "vat_on_orders": 0.0,
         "vat_on_listing_fees": 0.0,
         "vat_on_courier": 0.0,
         "vat_on_marketing_highlight": 0.0,
@@ -67,16 +59,12 @@ def _empty_kpis() -> dict:
         "total_marketing_highlight": 0.0,
         "total_marketing_credit_note": 0.0,
         "total_marketing_highlight_credit_note": 0.0,
-        "gross_promotion_spend": 0.0,
-        "promotion_credits": 0.0,
-        "net_promotion_spend": 0.0,
+        "net_marketing_highlight": 0.0,
+        "discount_promotion_spend": 0.0,
         "commission_on_marketing_discount": 0.0,
         "commission_on_marketing_fixed_price": 0.0,
-        "commission_on_marketing_free_delivery": 0.0,
-        "commission_on_marketing_punch_card": 0.0,
-        "commission_on_marketing_highlight": 0.0,
         "total_commission_on_promotions": 0.0,
-        "true_promotion_cost": 0.0,
+        "fully_loaded_promotion_cost": 0.0,
     }
 
 
@@ -241,11 +229,6 @@ def calculate_toters_kpis(
         - vat_on_courier
     )
 
-    # Kept temporarily for compatibility with existing consumers.
-    # It now represents VAT attached to customer revenue orders,
-    # excluding cost-only courier VAT.
-    vat_on_orders = vat_on_listing_fees
-
     vat_on_marketing_highlight = float(
         account_level_costs.get(
             "vat_marketing_highlight",
@@ -308,33 +291,32 @@ def calculate_toters_kpis(
         + account_marketing_highlight
     )
 
+    order_marketing_credit_note = -working[
+        "marketing_credit_note"
+    ].sum()
+
     total_marketing_credit_note = (
-        working["marketing_credit_note"].sum()
-        - account_marketing_credit
+        order_marketing_credit_note
+        + account_marketing_credit
     )
 
-    order_marketing_highlight_credit_note = working[
+    order_marketing_highlight_credit_note = -working[
         "marketing_highlight_credit_note"
     ].sum()
 
     total_marketing_highlight_credit_note = (
         order_marketing_highlight_credit_note
-        - account_highlight_credit
+        + account_highlight_credit
     )
 
-    gross_promotion_spend = sum(
+    net_marketing_highlight = (
+        total_marketing_highlight
+        - total_marketing_highlight_credit_note
+    )
+
+    discount_promotion_spend = sum(
         working[column].sum()
-        for column in _PROMOTION_CHARGE_COLUMNS
-    )
-
-    promotion_credits = sum(
-        abs(working[column].sum())
-        for column in _PROMOTION_CREDIT_COLUMNS
-    )
-
-    net_promotion_spend = (
-        gross_promotion_spend
-        - promotion_credits
+        for column in _DISCOUNT_PROMOTION_CHARGE_COLUMNS
     )
 
     average_order_value = (
@@ -371,21 +353,6 @@ def calculate_toters_kpis(
         listing_fee_rate,
     )
 
-    commission_on_marketing_free_delivery = commission_on(
-        total_marketing_free_delivery,
-        listing_fee_rate,
-    )
-
-    commission_on_marketing_punch_card = commission_on(
-        total_marketing_punch_card,
-        listing_fee_rate,
-    )
-
-    commission_on_marketing_highlight = commission_on(
-        total_marketing_highlight,
-        listing_fee_rate,
-    )
-
     # Commission attribution applies only to promotions that reduce
     # the commissionable order revenue: immediate discounts and
     # fixed-price promotions. Highlight, free delivery and punch-card
@@ -395,8 +362,8 @@ def calculate_toters_kpis(
         + commission_on_marketing_fixed_price
     )
 
-    true_promotion_cost = (
-        net_promotion_spend
+    fully_loaded_promotion_cost = (
+        discount_promotion_spend
         + total_commission_on_promotions
     )
 
@@ -464,7 +431,6 @@ def calculate_toters_kpis(
         "total_listing_fee": float(total_listing_fee),
         "total_marketing_cost": float(total_marketing_cost),
         "total_vat": float(total_vat),
-        "vat_on_orders": float(vat_on_orders),
         "vat_on_listing_fees": float(vat_on_listing_fees),
         "vat_on_courier": float(vat_on_courier),
         "vat_on_marketing_highlight": float(
@@ -514,14 +480,11 @@ def calculate_toters_kpis(
         "total_marketing_highlight_credit_note": float(
             total_marketing_highlight_credit_note
         ),
-        "gross_promotion_spend": float(
-            gross_promotion_spend
+        "net_marketing_highlight": float(
+            net_marketing_highlight
         ),
-        "promotion_credits": float(
-            promotion_credits
-        ),
-        "net_promotion_spend": float(
-            net_promotion_spend
+        "discount_promotion_spend": float(
+            discount_promotion_spend
         ),
         "commission_on_marketing_discount": float(
             commission_on_marketing_discount
@@ -529,19 +492,10 @@ def calculate_toters_kpis(
         "commission_on_marketing_fixed_price": float(
             commission_on_marketing_fixed_price
         ),
-        "commission_on_marketing_free_delivery": float(
-            commission_on_marketing_free_delivery
-        ),
-        "commission_on_marketing_punch_card": float(
-            commission_on_marketing_punch_card
-        ),
-        "commission_on_marketing_highlight": float(
-            commission_on_marketing_highlight
-        ),
         "total_commission_on_promotions": float(
             total_commission_on_promotions
         ),
-        "true_promotion_cost": float(
-            true_promotion_cost
+        "fully_loaded_promotion_cost": float(
+            fully_loaded_promotion_cost
         ),
     }
