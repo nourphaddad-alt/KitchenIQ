@@ -43,8 +43,8 @@ CATEGORY_MAP: dict[str, CategoryMapping] = {
     ),
     "Marketing Punch Card": CategoryMapping(
         event_type="marketing_punch_card",
-        mapping_status="supported_unobserved",
-        confidence="provisional",
+        mapping_status="validated",
+        confidence="confirmed",
     ),
     "Marketing Highlight": CategoryMapping(
         event_type="marketing_highlight",
@@ -53,8 +53,8 @@ CATEGORY_MAP: dict[str, CategoryMapping] = {
     ),
     "Marketing Credit Note": CategoryMapping(
         event_type="marketing_credit_note",
-        mapping_status="supported_unobserved",
-        confidence="provisional",
+        mapping_status="validated",
+        confidence="confirmed",
     ),
     "Marketing Highlights Credit Note": CategoryMapping(
         event_type="marketing_highlight_credit_note",

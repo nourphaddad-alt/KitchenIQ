@@ -29,8 +29,14 @@ def aggregate_account_level_costs(
         if record.event_type == "marketing_highlight":
             totals["marketing_highlight"] += amount
 
+        elif record.event_type == "marketing_credit_note":
+            totals["marketing_credit_note"] += amount
+
         elif record.event_type == "vat_marketing_highlight":
             totals["vat_marketing_highlight"] += amount
+
+        elif record.event_type == "vat_marketing_credit_note":
+            totals["vat_marketing_credit_note"] += amount
 
         elif record.event_type == "marketing_highlight_credit_note":
             totals["marketing_highlight_credit_note"] += amount

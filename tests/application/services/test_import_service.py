@@ -25,7 +25,7 @@ def _make_dataframe() -> pd.DataFrame:
             "Transaction Date": "2026-03-01 12:30:00",
             "Category": "Store Listing Fee",
             "Details": "Listing fee",
-            "Amount": "15000",
+            "Amount": "-15000",
         },
     ])
 
@@ -224,12 +224,12 @@ def test_import_service_multiple_events_per_order_consolidate_into_one_order() -
         _make_row(
             ID="activity-2",
             Category="Store Listing Fee",
-            Amount="15000",
+            Amount="-15000",
         ),
         _make_row(
             ID="activity-3",
             Category="Value Added Tax",
-            Amount="5000",
+            Amount="-5000",
         ),
     ])
 

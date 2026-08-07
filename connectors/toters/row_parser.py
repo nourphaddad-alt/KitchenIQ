@@ -164,6 +164,8 @@ def parse_invoice_row(
 
         if "marketing highlight" in normalized_details:
             event_type = "vat_marketing_highlight"
+        elif "marketing fees covered by toters" in normalized_details:
+            event_type = "vat_marketing_credit_note"
         else:
             event_type = "vat_order"
 

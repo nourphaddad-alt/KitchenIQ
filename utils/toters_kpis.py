@@ -44,6 +44,8 @@ def _empty_kpis() -> dict:
         "vat_on_orders": 0.0,
         "vat_on_listing_fees": 0.0,
         "vat_on_courier": 0.0,
+        "vat_on_marketing_highlight": 0.0,
+        "vat_on_marketing_credit_note": 0.0,
         "vat_on_marketing": 0.0,
         "total_courier_cost": 0.0,
         "average_order_value": 0.0,
@@ -192,6 +194,13 @@ def calculate_toters_kpis(
         )
     )
 
+    account_marketing_credit = float(
+        account_level_costs.get(
+            "marketing_credit_note",
+            0.0,
+        )
+    )
+
     account_highlight_credit = float(
         account_level_costs.get(
             "marketing_highlight_credit_note",
@@ -202,6 +211,7 @@ def calculate_toters_kpis(
     total_marketing_cost = (
         order_marketing_cost
         + account_marketing_highlight
+        - account_marketing_credit
         - account_highlight_credit
     )
 
@@ -236,11 +246,23 @@ def calculate_toters_kpis(
     # excluding cost-only courier VAT.
     vat_on_orders = vat_on_listing_fees
 
-    vat_on_marketing = float(
+    vat_on_marketing_highlight = float(
         account_level_costs.get(
             "vat_marketing_highlight",
             0.0,
         )
+    )
+
+    vat_on_marketing_credit_note = float(
+        account_level_costs.get(
+            "vat_marketing_credit_note",
+            0.0,
+        )
+    )
+
+    vat_on_marketing = (
+        vat_on_marketing_highlight
+        - vat_on_marketing_credit_note
     )
 
     total_vat = (
@@ -286,9 +308,10 @@ def calculate_toters_kpis(
         + account_marketing_highlight
     )
 
-    total_marketing_credit_note = working[
-        "marketing_credit_note"
-    ].sum()
+    total_marketing_credit_note = (
+        working["marketing_credit_note"].sum()
+        - account_marketing_credit
+    )
 
     order_marketing_highlight_credit_note = working[
         "marketing_highlight_credit_note"
@@ -444,6 +467,12 @@ def calculate_toters_kpis(
         "vat_on_orders": float(vat_on_orders),
         "vat_on_listing_fees": float(vat_on_listing_fees),
         "vat_on_courier": float(vat_on_courier),
+        "vat_on_marketing_highlight": float(
+            vat_on_marketing_highlight
+        ),
+        "vat_on_marketing_credit_note": float(
+            vat_on_marketing_credit_note
+        ),
         "vat_on_marketing": float(vat_on_marketing),
         "total_courier_cost": float(total_courier_cost),
         "average_order_value": float(average_order_value),

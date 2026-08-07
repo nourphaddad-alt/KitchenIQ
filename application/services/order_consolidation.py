@@ -62,18 +62,13 @@ CONSOLIDATED_ORDER_COLUMNS = [
 
 def _cost_contribution(event: FinancialEvent) -> float:
     """
-    Normalize the sign of one cost-type event.
+    Convert Toters accounting sign into canonical net cost.
 
-    Ordinary deductions are stored as positive cost magnitudes.
-    Credit and reversal events preserve their original sign so they
-    reduce the related marketing cost rather than increase it.
+    Toters cost deductions are negative ledger amounts and therefore
+    become positive costs. Positive adjustment/reversal rows become
+    negative contributions and offset the original charge.
     """
-    amount = float(event.signed_amount)
-
-    if event.event_type in _CREDIT_EVENT_TYPES:
-        return amount
-
-    return abs(amount)
+    return -float(event.signed_amount)
 
 
 def _empty_order(
