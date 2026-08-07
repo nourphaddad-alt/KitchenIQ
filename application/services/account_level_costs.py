@@ -41,4 +41,12 @@ def aggregate_account_level_costs(
         elif record.event_type == "marketing_highlight_credit_note":
             totals["marketing_highlight_credit_note"] += amount
 
+        else:
+            raise ValueError(
+                "Toters financial routing failure: "
+                "account-level event type "
+                f"{record.event_type!r} has no account-ledger handler "
+                f"(source row {record.source_row_number})."
+            )
+
     return dict(totals)

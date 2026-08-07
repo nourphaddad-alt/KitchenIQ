@@ -161,6 +161,15 @@ def consolidate_orders(
                 _cost_contribution(record)
             )
 
+        else:
+            raise ValueError(
+                "Toters financial routing failure: "
+                "order-linked event type "
+                f"{record.event_type!r} has no order-ledger handler "
+                f"(source row {record.source_row_number}, "
+                f"order reference {record.order_reference!r})."
+            )
+
     rows: list[dict[str, object]] = []
 
     for order in orders.values():
