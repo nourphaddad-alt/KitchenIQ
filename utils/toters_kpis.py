@@ -55,7 +55,6 @@ def _empty_kpis() -> dict:
         "retained_revenue_rate": None,
         "orders_with_marketing": 0,
         "marketing_order_share": None,
-        "median_order_value": 0.0,
         "minimum_order_value": 0.0,
         "maximum_order_value": 0.0,
         "period_days": None,
@@ -410,7 +409,6 @@ def calculate_toters_kpis(
     )
 
     if revenue_orders.empty:
-        median_order_value = 0.0
         minimum_order_value = 0.0
         maximum_order_value = 0.0
     else:
@@ -418,9 +416,6 @@ def calculate_toters_kpis(
             "gross_revenue"
         ]
 
-        median_order_value = (
-            gross_order_values.median()
-        )
         minimum_order_value = (
             gross_order_values.min()
         )
@@ -462,9 +457,6 @@ def calculate_toters_kpis(
         "retained_revenue_rate": retained_revenue_rate,
         "orders_with_marketing": orders_with_marketing,
         "marketing_order_share": marketing_order_share,
-        "median_order_value": float(
-            median_order_value
-        ),
         "minimum_order_value": float(
             minimum_order_value
         ),

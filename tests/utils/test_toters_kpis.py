@@ -196,3 +196,14 @@ def test_cost_only_courier_vat_is_not_classified_as_order_vat() -> None:
     assert result["vat_on_courier"] == 550.0
     assert result["total_vat"] == 3300.0
     assert result["total_courier_cost"] == 5000.0
+
+
+
+def test_median_order_value_is_not_part_of_kpi_contract() -> None:
+    result = calculate_toters_kpis(
+        pd.DataFrame([_base_row()])
+    )
+
+    assert "median_order_value" not in result
+    assert result["minimum_order_value"] == 100000.0
+    assert result["maximum_order_value"] == 100000.0
