@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+
+# Internal traceability control only. This is deliberately not rendered as a
+# product screen: spreadsheet requirements must become workflows, not content.
+PHASE_FEATURE_COVERAGE: dict[str, str] = {
+    "p1_a_1_concept_keyword_tagging_rating_reviews": "Phase 1 / Discovery audit",
+    "p1_a_2_photos_descriptions": "Phase 1 / Discovery audit",
+    "p1_b_1_cancel_rate": "Phase 1 / Operations control room",
+    "p1_b_2_prep_time": "Phase 1 / Operations control room",
+    "p1_b_3_delivery_time": "Phase 1 / Operations control room",
+    "p1_b_4_availability": "Phase 1 / Operations control room",
+    "p1_b_5_refunded_items": "Phase 1 / Operations control room",
+    "p1_b_6_forgotten_items": "Phase 1 / Operations control room",
+    "p1_c_1_platform_fees": "Phase 1 / Profit baseline and report import",
+    "p1_c_2_cogs_packaging_cost": "Phase 1 / Profit baseline",
+    "p1_c_3_repricing": "Phase 1 / SKU repricing",
+    "p1_c_4_fixed_costs": "Phase 1 / Break-even calculator",
+    "p1_d_1_menu_matrix": "Phase 1 / Menu matrix",
+    "p1_e_1_combos_bundles": "Phase 1 / Bundle economics",
+    "p1_f_1_marketing_formula_ads": "Phase 1 / Marketing and ads",
+    "p2_a_1_current_promotions": "Phase 2 / Promotion test history",
+    "p2_a_2_promotion_economics": "Phase 2 / Promotion simulator",
+    "p2_b_1_promotion_type": "Phase 2 / Offer builder",
+    "p2_b_2_product_selection": "Phase 2 / Offer builder with Menu IQ input",
+    "p2_b_3_bundle_combo_design": "Phase 2 / Offer builder bundle mechanic",
+    "p2_c_1_discount_depth": "Phase 2 / Promotion simulator",
+    "p2_c_2_minimum_spend_threshold": "Phase 2 / Offer guardrails",
+    "p2_c_3_timing": "Phase 2 / Offer builder test window",
+    "p2_c_4_duration_frequency": "Phase 2 / Offer builder duration",
+    "p2_d_1_incremental_orders": "Phase 2 / Baseline comparison",
+    "p2_d_2_cannibalization": "Phase 2 / Cannibalization input",
+    "p2_e_1_paid_promotion_ads": "Phase 2 / Ad spend economics",
+    "p2_e_2_promo_ads_combination": "Phase 2 / Combined contribution model",
+    "p2_f_1_mvp_score": "Phase 2 / MVP ranking",
+    "p2_f_2_recommendation_engine": "Phase 2 / Next-decision recommendation",
+    "p2_f_3_test_learn_scale": "Phase 2 / Test history and iteration loop",
+    "p2_g_1_margin_gap": "Phase 2 / 17% target calculator",
+    "p2_g_2_progress_tracking": "Phase 2 / Margin progress history",
+}
