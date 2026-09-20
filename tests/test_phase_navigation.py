@@ -36,3 +36,24 @@ def test_phase_two_contains_simulator_ranking_and_target() -> None:
         "17% target",
     ]
     assert not app.file_uploader
+
+
+def test_phase_one_offers_working_mock_reports_for_supported_platforms() -> None:
+    app = AppTest.from_file(APP_PATH, default_timeout=20).run()
+
+    assert any(
+        button.label == "Download Uber Eats mock report"
+        for button in app.get("download_button")
+    )
+    platform = next(
+        selectbox
+        for selectbox in app.selectbox
+        if selectbox.label == "Delivery Platform"
+    )
+    platform.set_value("Deliveroo").run()
+
+    assert not app.exception
+    assert any(
+        button.label == "Download Deliveroo mock report"
+        for button in app.get("download_button")
+    )

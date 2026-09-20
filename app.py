@@ -1,17 +1,26 @@
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 from application.dto.analysis_result import AnalysisResult
 from application.services.health_score_service import HealthScoreService
 from application.services.import_service import ImportService
 from application.services.order_consolidation import consolidate_orders
+from application.services.report_upload_validation import (
+    TOTERS_SOURCE_COLUMNS,
+    TOTERS_TEMPLATE_CSV,
+    UploadKind,
+    assess_toters_upload,
+)
 from application.ui.phase_workspaces import (
     render_phase_one_workspace,
     render_phase_two_workspace,
 )
+from data.schemas.deliveroo import DELIVEROO_REQUIRED_COLUMNS
 from data.schemas.uber_eats import UBER_EATS_REQUIRED_COLUMNS
 from utils.analyser import analyse_delivery_platform
 from utils.loader import load_file
-from utils.mapper import map_uber_eats
+from utils.mapper import map_deliveroo, map_uber_eats
 from utils.validation import (
     validate_required_columns,
     validate_restaurant_name,
@@ -285,13 +294,14 @@ def display_recommendation_section(
         st.divider()
 
 
-def display_uber_analysis(
+def display_delivery_analysis(
     restaurant: str,
     data,
     analysis: dict,
+    platform: str,
 ) -> None:
     """
-    Display the Uber Eats analysis dashboard.
+    Display the normalized Uber Eats or Deliveroo analysis dashboard.
     """
     kpis = analysis["kpis"]
     problems = analysis["problems"]
@@ -299,11 +309,11 @@ def display_uber_analysis(
 
     st.success(
         f"Welcome {restaurant}! "
-        "KitchenIQ has analysed your Uber Eats report."
+        f"KitchenIQ has analysed your {platform} report."
     )
 
     st.caption(
-        f"Uber Eats report · "
+        f"{platform} report · "
         f"{data.shape[0]} rows · "
         f"{data.shape[1]} columns"
     )
@@ -385,7 +395,7 @@ def display_uber_analysis(
     )
 
     with st.expander(
-        "View normalised Uber Eats report"
+        f"View normalised {platform} report"
     ):
         st.dataframe(
             data,
@@ -1106,6 +1116,26 @@ platform = st.selectbox(
     ],
 )
 
+example_reports = {
+    "Uber Eats": Path(__file__).resolve().parent
+    / "examples"
+    / "kitcheniq_mock_uber_eats_report.xlsx",
+    "Deliveroo": Path(__file__).resolve().parent
+    / "examples"
+    / "kitcheniq_mock_deliveroo_report.xlsx",
+}
+example_path = example_reports.get(platform)
+if example_path is not None and example_path.exists():
+    st.download_button(
+        f"Download {platform} mock report",
+        data=example_path.read_bytes(),
+        file_name=example_path.name,
+        mime=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+    )
+
 
 uploaded_file = st.file_uploader(
     "Upload Restaurant Report",
@@ -1114,6 +1144,19 @@ uploaded_file = st.file_uploader(
         "xlsx",
     ],
 )
+
+if platform == "Toters":
+    st.caption(
+        "Upload a Toters Activity or Invoice export. Required columns: "
+        + ", ".join(TOTERS_SOURCE_COLUMNS)
+        + "."
+    )
+    st.download_button(
+        "Download Toters report template",
+        data=TOTERS_TEMPLATE_CSV,
+        file_name="kitcheniq_toters_report_template.csv",
+        mime="text/csv",
+    )
 
 
 if st.button(
@@ -1159,15 +1202,21 @@ if st.button(
     # -------------------------------------------------------------
     # UBER EATS
     # -------------------------------------------------------------
-    if platform == "Uber Eats":
+    if platform in {"Uber Eats", "Deliveroo"}:
+        mapper = map_uber_eats if platform == "Uber Eats" else map_deliveroo
+        required_columns = (
+            UBER_EATS_REQUIRED_COLUMNS
+            if platform == "Uber Eats"
+            else DELIVEROO_REQUIRED_COLUMNS
+        )
         try:
-            data = map_uber_eats(
+            data = mapper(
                 raw_data
             )
 
         except Exception as error:
             st.error(
-                "KitchenIQ could not map this Uber Eats "
+                f"KitchenIQ could not map this {platform} "
                 f"report: {error}"
             )
             st.stop()
@@ -1175,7 +1224,7 @@ if st.button(
         valid_columns, column_message = (
             validate_required_columns(
                 data,
-                UBER_EATS_REQUIRED_COLUMNS,
+                required_columns,
             )
         )
 
@@ -1192,21 +1241,38 @@ if st.button(
 
         except Exception as error:
             st.error(
-                "KitchenIQ could not analyse this Uber Eats "
+                f"KitchenIQ could not analyse this {platform} "
                 f"report: {error}"
             )
             st.stop()
 
-        display_uber_analysis(
+        display_delivery_analysis(
             restaurant=restaurant_name,
             data=data,
             analysis=analysis,
+            platform=platform,
         )
 
     # -------------------------------------------------------------
     # TOTERS
     # -------------------------------------------------------------
     elif platform == "Toters":
+        upload_assessment = assess_toters_upload(
+            raw_data,
+            filename=uploaded_file.name,
+        )
+        if upload_assessment.kind is not UploadKind.TOTERS_REPORT:
+            st.error(upload_assessment.message)
+            st.info(
+                "Required Toters columns: "
+                + ", ".join(TOTERS_SOURCE_COLUMNS)
+                + ". You can download the template above to check the format."
+            )
+            if upload_assessment.received_columns:
+                with st.expander("Columns found in the uploaded file"):
+                    st.write(", ".join(upload_assessment.received_columns))
+            st.stop()
+
         # Schema validation is owned by the Toters connector so there is a
         # single, authoritative source of truth for required columns.
         try:
