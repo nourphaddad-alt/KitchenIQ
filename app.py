@@ -1,6 +1,16 @@
 import pandas as pd
 import streamlit as st
 from application.dto.analysis_result import AnalysisResult
+from application.registry.metric_registry import (
+    load_metric_registry,
+    load_programmes,
+)
+from application.registry.operating_system import (
+    ImplementationStatus,
+    PRODUCT_MODULES,
+    implementation_status,
+    metrics_for_module,
+)
 from application.services.health_score_service import HealthScoreService
 from application.services.import_service import ImportService
 from application.services.order_consolidation import consolidate_orders
@@ -476,12 +486,12 @@ def display_toters_results(
     col1, col2 = st.columns(2)
 
     col1.metric(
-        "Health Score",
+        "Platform Economics Score",
         f"{health_score.score}/100",
     )
 
     col2.metric(
-        "Health Label",
+        "Platform Economics Label",
         health_score.label,
     )
 
@@ -1052,7 +1062,222 @@ def display_toters_results(
             hide_index=True,
         )
 
-st.caption("Build: 2026-08-02 financial-reconciliation-v2")
+
+def display_metric_definition(metric) -> None:
+    """Render one complete Excel specification element."""
+    status = implementation_status(metric.metric_id)
+    status_explanation = {
+        ImplementationStatus.LIVE: (
+            "Calculated from the current supported platform report."
+        ),
+        ImplementationStatus.PARTIAL: (
+            "Partially calculated; additional inputs are required for the "
+            "complete Excel definition."
+        ),
+        ImplementationStatus.SPECIFICATION_READY: (
+            "Included in KitchenIQ and ready for its required data source."
+        ),
+    }[status]
+
+    with st.expander(
+        f"{metric.element} · {status.value}",
+        expanded=False,
+    ):
+        st.caption(f"{metric.phase} · {metric.section}")
+        st.write(f"**Implementation:** {status_explanation}")
+
+        definition_col, benefit_col = st.columns(2)
+        definition_col.markdown("**What it is**")
+        definition_col.write(metric.definition)
+        benefit_col.markdown("**Benefit**")
+        benefit_col.write(metric.benefit)
+
+        problem_col, metric_col = st.columns(2)
+        problem_col.markdown("**Problem it solves**")
+        problem_col.write(metric.problem_solved)
+        metric_col.markdown("**Key metric**")
+        metric_col.write(metric.key_metric)
+
+        benchmark_col, red_flag_col = st.columns(2)
+        benchmark_col.markdown("**Healthy benchmark**")
+        benchmark_col.write(metric.healthy_benchmark)
+        red_flag_col.markdown("**Red flag**")
+        red_flag_col.write(metric.red_flag)
+
+        st.markdown("**Recommended action**")
+        st.write(metric.recommended_action)
+
+        data_col, outcome_col = st.columns(2)
+        data_col.markdown("**Data needed**")
+        data_col.write(metric.data_needed)
+        outcome_col.markdown("**Outcome delivered**")
+        outcome_col.write(metric.outcome_delivered)
+
+        st.markdown("**Automation / integration**")
+        st.write(metric.automation)
+
+
+def display_operating_system() -> None:
+    """Display every element of the Excel operating model in the product."""
+    metrics = load_metric_registry()
+    programme_objectives = load_programmes()
+
+    st.subheader("KitchenIQ Profit Operating System")
+    st.write(
+        "Every element of the KitchenIQ Excel model is registered below. "
+        "Live calculations use supported report data; remaining elements "
+        "show exactly what data is still required."
+    )
+
+    summary_col1, summary_col2, summary_col3, summary_col4 = st.columns(4)
+    summary_col1.metric("Excel Elements", len(metrics))
+    summary_col2.metric("Phase 1", 15)
+    summary_col3.metric("Phase 2", 18)
+    summary_col4.metric("Profit Target", "17%")
+
+    module_labels = {
+        product_module.label: product_module.key
+        for product_module in PRODUCT_MODULES
+    }
+    selected_view = st.selectbox(
+        "Explore KitchenIQ",
+        [
+            "Executive Overview",
+            *module_labels.keys(),
+            "Data & Automation",
+            "Phase 3 Roadmap",
+        ],
+    )
+
+    if selected_view == "Executive Overview":
+        live_count = sum(
+            implementation_status(metric.metric_id)
+            is ImplementationStatus.LIVE
+            for metric in metrics
+        )
+        partial_count = sum(
+            implementation_status(metric.metric_id)
+            is ImplementationStatus.PARTIAL
+            for metric in metrics
+        )
+        ready_count = len(metrics) - live_count - partial_count
+
+        st.markdown("### Implementation coverage")
+        coverage_col1, coverage_col2, coverage_col3 = st.columns(3)
+        coverage_col1.metric("Live", live_count)
+        coverage_col2.metric("Partial", partial_count)
+        coverage_col3.metric("Specification Ready", ready_count)
+
+        st.info(
+            "A complete net-profit calculation requires COGS, packaging, "
+            "labour, utilities and fixed-cost inputs. Until those inputs are "
+            "available, this score represents platform economics only."
+        )
+
+        module_rows = []
+        for product_module in PRODUCT_MODULES:
+            module_metrics = metrics_for_module(product_module.key)
+            module_rows.append(
+                {
+                    "Module": product_module.label,
+                    "Excel elements": len(module_metrics),
+                    "Live": sum(
+                        implementation_status(metric.metric_id)
+                        is ImplementationStatus.LIVE
+                        for metric in module_metrics
+                    ),
+                    "Partial": sum(
+                        implementation_status(metric.metric_id)
+                        is ImplementationStatus.PARTIAL
+                        for metric in module_metrics
+                    ),
+                    "Specification ready": sum(
+                        implementation_status(metric.metric_id)
+                        is ImplementationStatus.SPECIFICATION_READY
+                        for metric in module_metrics
+                    ),
+                }
+            )
+
+        st.dataframe(
+            pd.DataFrame(module_rows),
+            width="stretch",
+            hide_index=True,
+        )
+        return
+
+    if selected_view in module_labels:
+        module_key = module_labels[selected_view]
+        product_module = next(
+            item for item in PRODUCT_MODULES if item.key == module_key
+        )
+        module_metrics = metrics_for_module(module_key)
+
+        st.markdown(f"### {product_module.label}")
+        st.write(product_module.description)
+        st.caption(f"{len(module_metrics)} Excel elements")
+
+        current_section = None
+        for metric in module_metrics:
+            if metric.section != current_section:
+                current_section = metric.section
+                st.markdown(f"#### {current_section}")
+
+            display_metric_definition(metric)
+        return
+
+    if selected_view == "Data & Automation":
+        st.markdown("### Complete Data Contract")
+        st.write(
+            "This table exposes the required inputs, outputs and automation "
+            "path for every Excel element."
+        )
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "Module": next(
+                            product_module.label
+                            for product_module in PRODUCT_MODULES
+                            if metric.metric_id
+                            in {
+                                item.metric_id
+                                for item in metrics_for_module(
+                                    product_module.key
+                                )
+                            }
+                        ),
+                        "Element": metric.element,
+                        "Status": implementation_status(
+                            metric.metric_id
+                        ).value,
+                        "Key metric": metric.key_metric,
+                        "Data needed": metric.data_needed,
+                        "Outcome": metric.outcome_delivered,
+                        "Automation": metric.automation,
+                    }
+                    for metric in metrics
+                ]
+            ),
+            width="stretch",
+            hide_index=True,
+        )
+        return
+
+    st.markdown("### Phase 3: Kitchen Optimization & New Brand Creation")
+    phase_three = programme_objectives[1]
+    st.write(phase_three["definition"])
+    roadmap_col1, roadmap_col2 = st.columns(2)
+    roadmap_col1.metric("Phase 2 Target", "17% net profit")
+    roadmap_col2.metric("Phase 3 Target", "30% net profit")
+    st.markdown("**Phase 3 scope reserved in the architecture**")
+    st.write(
+        "Kitchen capacity, labour efficiency, station bottlenecks, SKU "
+        "complexity, ingredient cross-utilization, dead inventory, virtual "
+        "brand opportunities and new-brand creation."
+    )
+
+st.caption("Build: 2026-09-20 excel-operating-system-v1")
 
 st.title(
     "🍽️ KitchenIQ"
@@ -1063,6 +1288,19 @@ st.subheader(
 )
 
 st.divider()
+
+workspace = st.sidebar.radio(
+    "Workspace",
+    [
+        "Operating System",
+        "Analyse Restaurant",
+    ],
+)
+st.sidebar.caption("33 registered Excel elements · 17% profit target")
+
+if workspace == "Operating System":
+    display_operating_system()
+    st.stop()
 
 
 restaurant_name = st.text_input(
